@@ -1,6 +1,8 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
 *$py.class
 
 # C extensions
@@ -11,6 +13,7 @@ __pycache__/
 env/
 build/
 develop-eggs/
+_build/
 dist/
 downloads/
 eggs/
@@ -88,3 +91,11 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Git 
+.git/*
+
+# Directories
+/.ide/
+/build
+/third_party/ 
