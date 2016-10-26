@@ -96,6 +96,7 @@ ENV/
 .git/*
 
 # Directories
-/.ide/
+/.idea/
 /build
+/_build/
 /third_party/ 
