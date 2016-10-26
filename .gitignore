@@ -96,8 +96,8 @@ ENV/
 .git/*
 
 # Directories
-*/.idea
-*/_build
+**/.idea/
+**/_build/
 phen-o-links/_build
 /.DS_Store
 
