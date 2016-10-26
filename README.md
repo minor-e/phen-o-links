@@ -1,3 +1,2 @@
-# phen-o-links
-Python module Data Processing for scan-o-matic.
-
+# phen-o-links 
+A Python module for processing scan-o-matic data.
