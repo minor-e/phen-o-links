@@ -96,7 +96,9 @@ ENV/
 .git/*
 
 # Directories
-phen-o-links/.idea/
+phen-o-links/.idea
 /build
-phen-o-links/_build/
+phen-o-links/_build
+phen-o-links/.DS_Store
+
 /third_party/ 
