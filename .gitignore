@@ -96,7 +96,7 @@ ENV/
 .git/*
 
 # Directories
-/.idea/
+phen-o-links/.idea/
 /build
-/_build/
+phen-o-links/_build/
 /third_party/ 
