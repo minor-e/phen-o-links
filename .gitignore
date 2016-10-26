@@ -99,6 +99,6 @@ ENV/
 phen-o-links/.idea
 /build
 phen-o-links/_build
-.DS_Store
+/.DS_Store
 
 /third_party/ 
