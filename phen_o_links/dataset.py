@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # Written and inspired by Esteban Fernandez Parada
 # Date for project started:12 June 2014
-# This is an alpha mode version of script phenolinks and its main goals.
+# This is an alpha mode version of script phen_o_links and its main goals.
 
 
 import pandas as pd
@@ -1339,7 +1339,7 @@ def dataset_bins_calculator(df, binwidth):
 
     See Also
     --------
-    phenolinks.dataset_pick_columns : For more information
+    phen_o_links.dataset_pick_columns : For more information
                                         about "split" parameter.
 
     """
@@ -4304,7 +4304,7 @@ def dataset_calculate_p_value_from_stats(
     merged_df : pandas.core.frame.DataFrame(object)
         The 'merged_df' parameter is a joined pandas data frame. The
         'merged_df' as two separate sources and formed as the 'df_merged'
-        return from phenolinks.dataassembler.data_assembler_merge_frames.
+        return from phen_o_links.dataassembler.data_assembler_merge_frames.
 
     welch_test : boolean(optional)
         The 'welch_test' specifies if p-values calculated are of equal
@@ -4349,7 +4349,7 @@ def dataset_calculate_p_value_from_stats(
     dataset_filesave : For more information about the function that 'save_as'
                        call to create csv-files.
 
-    phenolinks.dataassembler.data_assembler_merge_frames : For more information
+    phen_o_links.dataassembler.data_assembler_merge_frames : For more information
                                                            about how
                                                            'merged_df' input
                                                            is created.
