@@ -303,10 +303,10 @@ def dataplotter_object_table_maker(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                             data frame copy.
 
-    phenolinks.dataset.dataset_pick_columns : For more information
+    phen_o_links.dataset.dataset_pick_columns : For more information
                                               about "split" parameter.
     """
     # Copying frame
@@ -423,10 +423,10 @@ def dataplotter_stats_table_maker(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                              data frame copy.
 
-    phenolinks.dataset.dataset_filter_by_value : For more information
+    phen_o_links.dataset.dataset_filter_by_value : For more information
                                                   about "filter_val" parameter.
     """
     # Fixing text
@@ -780,7 +780,7 @@ def dataplotter_text_annotation_scatter(
     See Also
     --------
 
-    phenolinks.dataset.dataset_pairwise_distance_points : For more information
+    phen_o_links.dataset.dataset_pairwise_distance_points : For more information
                                                            about 'd' variable.
 
     """
@@ -1130,7 +1130,32 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         plot.
     color_columns : list(object)
         The "color_columns" parameter are the columns that are to be colored
-        coded. The values in "color_columns" must be booleans.
+        coded. The values in "color_columns" must be booleans. Default value
+        for "color_columns" is set to null '[]' and triggers function call
+        that forces the user to pick column label(s) to use for color coding.
+
+    Returns
+    -------
+    df2
+        The "df2" is the given "df" object with one additional column
+        called "Color_coded".
+
+    color_columns
+        The "color_columns" is list object where the items are the column(s)
+        label(s) given.
+
+    Raises
+    ------
+    TypeError
+        If values for the labels in "color_columns" is not boolean typed.
+    ValueError
+        If number of labels in "color_columns" exceeds 25.
+
+    See Also
+    --------
+    phen_o_links.dataset_pick_columns : For more information about function
+                                        called made when "color_columns" is set
+                                        to null.
 
     """
     #Local global
@@ -1142,7 +1167,6 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     if not color_columns:
         color_columns, idx = ds.dataset_pick_columns(df, split='groupby')
         del idx
-    print color_columns
 
     if not df[color_columns].values.dtype == type_c.dtype:
         text = ("The 'color_columns' given have items that are not "
@@ -1165,7 +1189,7 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         hues_2 = hues_2[::-1]
         hues_2 = hues_2[:len(n_slice)]
 
-    if len(color_columns) >= 25:
+    if len(color_columns) > 25:
         text = ("Please reconsider the amounts of groups to color code, n=25"
                 "or more. This will not work well!")
         raise ValueError(text)
@@ -1438,7 +1462,7 @@ def dataplotter_scatter_x_y_plot(
     Parameters
     ----------
     df : pandas.core.frame.DataFrame(object)
-        Input data frame
+        Input data frame.
 
     filter_val : float, int
         Value for filtering picked columns. The "filter_val" parameter also
@@ -1461,29 +1485,22 @@ def dataplotter_scatter_x_y_plot(
         The 'extra_features' is list that only accepts boolean values.
         The parameter adds extra features upon rendered scatter figure.
         The order in 'extra_features' have different properties
-
-        'extra_features' = ['Identity Line', 'Grid Line',
-                            'Linear Regression', 'Frame around figure legend',
-                            'Shadow behind figure legend']
-
+        'extra_features' = ['Identity Line', 'Grid Line','Linear Regression',
+        'Frame around figure legend','Shadow behind figure legend']
         The default setting is all 'extra_features' options to False
         except for 'Shadow behind figure legend'.
 
     func_call : list (optional)
-        The 'func_call' accepts only boolean values. The item
-        order calls different functions, where 'outliers' are assigned.
-        The 'func_call' default setting is
-        'func_call' = [False, False, False],
-        and no function calls are
-        executed.
+        The 'func_call' accepts only boolean values. The item order calls
+        different functions, where 'outliers' are assigned. The 'func_call'
+        default setting is 'func_call' = [False, False, False], and no functions
+        are executed.
 
     sub_frame : list(optional)
-        The 'sub_frame' parameter has 2 valid type inputs
-        in the following order
-
-        'sub_frame' = [df(object), str(object)]
-
-        If sub_frame option is in use, the 'func_call'
+        The 'sub_frame' parameter has 2 valid type inputs in the following
+        order 'sub_frame' = [df(object), str(object)]
+        If str(object) is set to "Color_code" and function for coloring
+        subframe is activated.If sub_frame option is in use, the 'func_call'
         is disable.
 
     markersize : float, int (optional)
@@ -1534,16 +1551,20 @@ def dataplotter_scatter_x_y_plot(
 
     Returns
     -------
-    fig1 : plt.figure (object)
-        The figure displayed with sub plot.
-        for more information about object
-        search in Matplotlib documentation
-        matplotlib.figure.Figure
-    ax : added subplot and axes (object)
-        All information about subplot.
-        For more information see
-        Matplotlib and search for
-        matplot.axes._subplots.AxesSubplot
+    fig1
+        The "fig1" is a plt.figure (object). The figure displayed with sub
+        plot. For more information about figure objects search in Matplotlib
+        documentation matplotlib.figure.Figure
+
+    ax
+        The added axes for the "fig1"(object). More information about subplot
+        axes search for matplot.axes._subplots.AxesSubplot in Matplotlib
+        documentation.
+
+    Raises
+    ------
+    ValueError
+        If "sub_frame" labels are not found in main data frame ('df').
 
     See Also
     --------
@@ -1559,17 +1580,21 @@ def dataplotter_scatter_x_y_plot(
     dataplotter_x_y_limit : For more information about axis
                             limitation with "filter_val".
 
+    dataplotter_color_code_subframe : For more information about color coding
+                                      "sub_frame".
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+
+
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                             data frame copy.
-    phenolinks.dataset.dataset_top_and_bottom: For more information about
+    phen_o_links.dataset.dataset_top_and_bottom: For more information about
                                                'num', 'percentage' and
                                                'func_call'.
 
-    phenolinks.dataset.dataset_filter_by_value : For more information about
+    phen_o_links.dataset.dataset_filter_by_value : For more information about
                                                  "filter_val" parameter.
 
-    phenolinks.dataset.dataset_regline : For more information about regression
+    phen_o_links.dataset.dataset_regline : For more information about regression
                                          line.
 
     """
@@ -1888,7 +1913,7 @@ def dataplotter_boxplot(
 
     See Also
     --------
-    phenolinks.dataset.dataset_pick_columns : For more information about
+    phen_o_links.dataset.dataset_pick_columns : For more information about
                                               "split"
 
     """
@@ -2162,10 +2187,10 @@ def dataplotter_line(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                              data frame copy.
 
-    phenolinks.dataset.dataset_pick_columns : For more information
+    phen_o_links.dataset.dataset_pick_columns : For more information
                                                about "split" parameter.
     """
     # Local variables
@@ -2266,12 +2291,12 @@ def dataplotter_histogram_outliers(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                              data frame copy.
 
-    phenolinks.dataset.dataset_pick_columns : For more information
+    phen_o_links.dataset.dataset_pick_columns : For more information
                                                about "split" parameter.
-    phenolinks.dataset.dataset_outliers2 : For more information
+    phen_o_links.dataset.dataset_outliers2 : For more information
                                             about outliers calculation parameter.
     """
 
@@ -2805,3 +2830,5 @@ def dataplotter_hierarchical_clustered_heatmap(
 if __name__ == "__main__":
     # Execute only as script
     print "Please import module named {0} with Ipython".format(__name__)
+
+
