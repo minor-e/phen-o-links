@@ -9,5 +9,5 @@ setup(
     author="Esteban Fernandez Parada",
     author_email="estban.py.dev@gmail.com",
     packages=[
-        "phen-o-links"],)
+        "phen_o_links"],)
 
