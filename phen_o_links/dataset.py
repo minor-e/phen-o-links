@@ -3052,6 +3052,103 @@ def dataset_import_goterms(
     print 'end'
 
 
+def dataset_mu_and_sigma_test(df, n=None, columns=[]):
+    """Take a columns labels and calculates the mean and standard deviation
+    (std) for that given label checks if value x from label passes the
+    threshold calledt, t = mean +/- n x std. The function will check if x>=t
+    or x<=t. Function will always return mu and sigma test for n=2 and n=3.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The data frame that contains the values.
+
+    n : int, float(object)
+        The "n" parameters is the factor of times the std is multiplied with.
+        The default setting is set to None
+
+    columns : list(object)
+        The "columns" is list object that accepts items that are string typed.
+        The "columns" parameter is the label that is subjected to the test.
+        If parameter left empty function call is triggered. The default value
+        of "columns" is null or empty.
+
+    Returns
+    -------
+    df2 : pandas.core.frame.DataFrame(object)
+        The "df2" returns is the same "df" object with 2 or 3 new columns
+        per given label in "columns".
+
+    new_frame : pandas.core.frame.DataFrame(object)
+        The calculated mean and standard deviation for the given columns
+        labels in "columms".
+
+
+    Raises
+    ------
+    ValueError
+        If "columns" items is not found in df as a column label.
+
+    See Also
+    --------
+    dataset_pick_columns : For more information about "columns" is equal to
+                           null and function called.
+
+    """
+    # Local Global
+    df2 = dataset_copy_frame(df)
+    db_columns = df2.columns.tolist()
+    n_factor=2
+    sigmaxn = ('_{0}_x_sigmas').format(str(n))
+
+    # Checking if "columns" is empty
+    if not columns:
+        columns, idx = dataset_pick_columns(df2, split='groupby')
+
+    # Checking that columns are present in "df"
+    columns_search = all([i in db_columns for i in columns])
+
+    if not columns_search:
+        db_set = set(db_columns)
+        columns_set = set(columns)
+        diff = columns_set.difference(db_set)
+        text =("The labels given in 'columns' were not found in 'df'."
+               "Labels found that differed between 'df' and columns "
+               "was\n:{0}").format(str(diff))
+        ValueError(text)
+
+    # Creating frame with mean and standard deviation
+    new_frame = pd.DataFrame(
+        [df2[columns].mean(), df2[columns].std()],
+        index=['Mean', 'std'])
+
+    # While loop that calculates mean and sigmas
+    while 4 > n_factor:
+        for i in columns:
+            df2[str(i)+'_'+str(n_factor)+'_x_sigmas'] = (
+                df2[i].values >= new_frame[i]['Mean'] + (
+                    n_factor * new_frame[i]['std'])) | (
+                        df2[i].values <= new_frame[i]['Mean'] - (
+                            n_factor * new_frame[i]['std']))
+        n_factor = n_factor + 1
+
+        if n_factor >4:
+                break
+    if n:
+        for i in columns:
+            df2[str(i)+sigmaxn] = (
+                df2[i].values >= new_frame[i]['Mean'] + (
+                    n * new_frame[i]['std'])) | (
+                        df2[i].values <= new_frame[i]['Mean'] - (
+                            n * new_frame[i]['std']))
+    return df2, new_frame
+
+
+
+
+
+
+
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
     """ Takes data frame
