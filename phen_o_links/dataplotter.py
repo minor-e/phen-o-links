@@ -1785,8 +1785,8 @@ def dataplotter_scatter_x_y_plot(
             print "Entering 'colorcoded' mode!"
             df_outlier3, label_colors = dataplotter_color_code_subframe(
                 subset2)
-            m_color = set(df_outlier3.Color_coded)
-            m_color = list(m_color)
+            m_color = df_outlier3.Color_coded.unique()
+            #m_color = list(m_color)
             gr = df_outlier3.groupby('Color_coded')
             for i in range(len(m_color)):
                 ax.scatter(
