@@ -1210,6 +1210,8 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     t_table = df2[color_columns].sum()
     t_table = t_table.sort_index(ascending=True)
     color_columns = t_table.index.tolist()
+    color_columns = [i.replace('_',' ') for i in color_columns if i.count('_')]
+    color_columns = dataplotter_textspacemanger(color_columns)
 
     return df2, color_columns
 
