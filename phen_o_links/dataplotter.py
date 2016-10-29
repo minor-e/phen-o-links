@@ -1163,19 +1163,22 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     hues_2 = ['light', 'light_dark', 'dark_light', 'dark']
     type_c = np.array([False])
 
+    # Coping frame
+    df2 = ds.dataset_copy_frame(df)
+
     # Picking columns
     if not color_columns:
-        color_columns, idx = ds.dataset_pick_columns(df, split='groupby')
+        color_columns, idx = ds.dataset_pick_columns(df2, split='groupby')
         del idx
 
-    if not df[color_columns].values.dtype == type_c.dtype:
+    if not df2[color_columns].values.dtype == type_c.dtype:
         text = ("The 'color_columns' given have items that are not "
-                "boolean\n:{0}").format(df[color_columns].values[0])
+                "boolean\n:{0}").format(df2[color_columns].values[0])
         raise TypeError(text)
 
     # Creating order of groups
-    df['Nr_True'] = [sum(i) for i in df[color_columns].values]
-    df = df.sort_values(by='Nr_True')
+    df2['Nr_True'] = [sum(i) for i in df2[color_columns].values]
+    df2 = df2.sort_values(by='Nr_True')
 
     # Creating color palette
     if len(color_columns) <= 5:
@@ -1199,9 +1202,14 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     color_theme = palette_c + d_c + dl_c + ld_c + l_c
     color_dict = {i + 1: x for i, x in enumerate(color_theme)}
 
-    df2 = ds.dataset_add_column_by_dict(df, color_dict, Grouper="Nr_True",
+    df2 = ds.dataset_add_column_by_dict(df2, color_dict, Grouper="Nr_True",
                                         new_col="Color_coded")
     del df2['Nr_True']
+
+    # Ordering labels to match color_coding
+    t_table = df2[color_columns].sum()
+    t_table = t_table.sort_index(ascending=True)
+    color_columns = t_table.index.tolist()
 
     return df2, color_columns
 
@@ -1584,18 +1592,18 @@ def dataplotter_scatter_x_y_plot(
                                       "sub_frame".
 
 
-
     phen_o_links.dataset.dataset_copy_frame : For more information about
-                                            data frame copy.
-    phen_o_links.dataset.dataset_top_and_bottom: For more information about
-                                               'num', 'percentage' and
-                                               'func_call'.
+                                              data frame copy.
+
+    phen_o_links.dataset.dataset_top_and_bottom : For more information about
+                                                  'num', 'percentage' and
+                                                  'func_call'.
 
     phen_o_links.dataset.dataset_filter_by_value : For more information about
-                                                 "filter_val" parameter.
+                                                   "filter_val" parameter.
 
-    phen_o_links.dataset.dataset_regline : For more information about regression
-                                         line.
+    phen_o_links.dataset.dataset_regline : For more information about
+                                           regression line.
 
     """
     # Fixing text
