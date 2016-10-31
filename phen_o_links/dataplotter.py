@@ -1177,7 +1177,8 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         raise TypeError(text)
 
     # Creating order of groups
-    df2['Nr_True'] = [sum(i) for i in df2[color_columns].values]
+    df2['Nr_True'] = [
+        np.nonzero(i != 0)[0][-1] + 1 for i in df2[color_columns].values]
     df2 = df2.sort_values(by='Nr_True')
 
     # Creating color palette
@@ -1204,13 +1205,14 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
 
     df2 = ds.dataset_add_column_by_dict(df2, color_dict, Grouper="Nr_True",
                                         new_col="Color_coded")
-    del df2['Nr_True']
+    #del df2['Nr_True']
 
     # Ordering labels to match color_coding
     t_table = df2[color_columns].sum()
-    t_table = t_table.sort_index(ascending=True)
+    t_table = t_table.sort_values(ascending=False)
     color_columns = t_table.index.tolist()
-    color_columns = [i.replace('_',' ') for i in color_columns if i.count('_')]
+    color_columns = [
+        i.replace('_', ' ') for i in color_columns if i.count('_')]
     color_columns = dataplotter_textspacemanger(color_columns)
 
     return df2, color_columns
@@ -1465,7 +1467,8 @@ def dataplotter_scatter_x_y_plot(
         markersize=20, fig_title='Untitled',
         x_title='Untitled', y_title='Untitled', datapoints='Untitled',
         regtext='Untitled', fig_fontsize=[12, 10, 8], all_axis=False,
-        spines=[False, True, False, True], a_txt=True, trn=0.5, trn2=0.5):
+        spines=[False, True, False, True], a_txt=True, c_txt=True, trn=0.5,
+        trn2=0.5):
     """Takes a data frame object from pandas and returns scatter plot
     of two columns either with or without regression line.
 
@@ -1503,8 +1506,8 @@ def dataplotter_scatter_x_y_plot(
     func_call : list (optional)
         The 'func_call' accepts only boolean values. The item order calls
         different functions, where 'outliers' are assigned. The 'func_call'
-        default setting is 'func_call' = [False, False, False], and no functions
-        are executed.
+        default setting is 'func_call' = [False, False, False], and no
+        functions are executed.
 
     sub_frame : list(optional)
         The 'sub_frame' parameter has 2 valid type inputs in the following
@@ -1796,6 +1799,17 @@ def dataplotter_scatter_x_y_plot(
                     gr.get_group(m_color[i])[columns[1]].values,
                     c=m_color[i], marker='o', s=markersize, lw=0,
                     alpha=trn2, label=r"{%s}" % (label_colors[i]))
+
+        if c_txt:
+            print "Color coded Annotations for groups size of n <= 30!"
+            t_frame = pd.DataFrame(gr.size() <= 30, columns=['Trues'])
+            t_db = t_frame.sort_values('Trues', ascending=False)
+            n_db = np.nonzero(t_db.Trues)[0][-1] + 1
+            t_db = t_db[:n_db]
+            left_c = t_db.index.tolist()
+            df_outlier3['Outlier_c'] = df_outlier3.Color_coded.isin(left_c)
+            df_outlier2 = df_outlier3[df_outlier3.Outlier_c == True]
+
 
         if a_txt:
         # Points are getting names.
