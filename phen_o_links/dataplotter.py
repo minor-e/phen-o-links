@@ -1552,7 +1552,7 @@ def dataplotter_scatter_x_y_plot(
         The values determines visibility of spines a True equals to visible.
         The default values for "spines" is [False, True, False, True].
 
-    a_txt : boolean(optional)
+    a_txt, c_txt : boolean(optional)
         The parameter called 'a_txt' accepts only booleans and is responsible
         for visualizes point annotation given by 'index' set by functional.
         Default setting for 'a_txt' is set to 'True'
