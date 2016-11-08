@@ -1,4 +1,4 @@
-Phenoliniks
+Phen-o-liniks
 ============
 
 The tutorial assumes that the system in use is linux based or mac and
@@ -25,6 +25,8 @@ Requirements:
     rpy2 2.3.9 version
         Package handles R object in and with python.
 
+    dvipng 1.14 or greater
+
     TeX Live packages, -basic, -science, -latex, -latex-extra
         For latex packages for text conversion.
         pdfTeX 3.1415926-2.5-1.40.14 (TeX Live 2013/Debian)
@@ -39,6 +41,7 @@ Requirements:
         Compiled with libpng 1.2.49; using libpng 1.2.50
         Compiled with zlib 1.2.8; using zlib 1.2.8
         Compiled with poppler version 0.24.5
+        
  
 
     Packages needed to be install are:
