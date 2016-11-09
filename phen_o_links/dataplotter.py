@@ -886,7 +886,7 @@ def dataplotter_fixing_textformat():
     mpl.rc('font', **{'family': "sans-serif"})
     params = {'text.latex.preamble': [r'\usepackage{siunitx}',
                                       r'\usepackage{sfmath}',
-                                      r'\sisetup{detect-family = true}',
+                                      r'\sisetup{detect-all}',
                                       r'\usepackage{amsmath}']}
 
     plt.rcParams.update(params)
