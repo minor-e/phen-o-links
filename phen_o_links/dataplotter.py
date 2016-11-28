@@ -2851,6 +2851,122 @@ def dataplotter_hierarchical_clustered_heatmap(
     return fig1, df_cluster
 
 
+def dataplotter_kde_plot(
+        df, filename="untitle", index=[], columns=[],
+        figlabels=["Title", "X label", "Y label"],
+        datalabels=["Data 1", "Data 2"], x_limits=(1, -1)):
+    """Take a given data frame and returns 2 kernel density estimates lines.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the given pandas DataFrame (object)
+
+    filename : str(object)
+        The 'filename' is the relative path from current working directory.
+
+    index, columns : list(object)
+        The parameter called 'index' and 'columns' are specify data input.
+        The 'index' groups the 'df' in nth amount of indices and the
+        'columns' parameter specify the 2 labels with values.
+
+    figlabels : list(object)
+        The parameter called 'figlabels' is list object with the
+        length of 3 items. The order of the items determines different
+        features. 1th item is title, 2nd item is xlabel, 3rd item is ylabel.
+
+    datalabels : list(object)
+        The parameter called 'datalabels' has length of 2 items
+        which corresponds to the data inputs given in 'columns'.
+
+    x_limits : tuple(object)
+        The parameter called 'x_limits' determines the x-axis range
+        form x-max to x-minimum value.
+
+    Returns
+    -------
+    svg : figure(object)
+
+        The function returns nth amount of figure at the current
+        working directory.
+
+    Raises
+    ------
+    ValueError
+        If 'columns' or 'index' items not found in main 'df'.
+        If 'filename' is not a string object.
+    IndexError
+        If 'index' given to group 'df' is not divisible by 2.
+
+    See Also
+    --------
+    phen_o_links.dataset.dataset_pick_columns : For more information about
+                                                function called when 'index'
+                                                and 'columns' is empty.
+    """
+
+    # Global Local
+    indices_key = []
+
+    # Copy frame
+    df1 = ds.dataset_copy_frame(df)
+
+    figtext = dataplotter_textspacemanger(figlabels)
+    datatext = dataplotter_textspacemanger(datalabels)
+
+    # Function call
+    if not(index and columns):
+        columns, index = ds.dataset_pick_columns(df1, split="groupby")
+
+    if not isinstance(filename, str):
+        text = ("Make sure that 'filename' parameter is a string object."
+                " User input was {0}").format(filename)
+        raise ValueError(text)
+
+    if index and columns:
+        var = index + columns
+        df1_columns = df1.columns.tolist()
+        test = [i for i in var if i not in df1_columns]
+        if test:
+            text = ("Items given in 'columns' are not found "
+                    "User input {0}").format(var)
+            raise ValueError(text)
+
+    # Creating pandas object thats is grouped by index
+    df1_gr = df1.groupby(index)
+    indices_key = df1_gr.indices.keys()
+
+    if len(indices_key) % 2:
+        text = ("This function is viable if indices for a given index "
+                "is divisible with 2. The length of indices given by "
+                "'index' parameter is {0}").format(len(indices_key))
+        raise IndexError(text)
+
+    # Loop that plots stuff
+    for i in indices_key[::2]:
+        nr = indices_key[i-1:i+1]
+        for d in nr:
+            df1_gr.get_group(d)[columns[0]].plot(
+                kind="kde", c="blue", ls='--', lw=2.5,
+                label=r"%s" % (datatext[0] + str(d)))
+            df1_gr.get_group(d)[columns[1]].plot(
+                kind="kde", c="cyan", lw=2.5,
+                label=r"%s" % (datatext[1] + str(d)))
+        plt.xlim(x_limits)
+        plt.axvline(x=0, color="black", ls='--', label=r"Origin", lw=1.0)
+        plt.title(r"%s" % (figtext[0]))
+        plt.xlabel(r"%s" % (figtext[1]))
+        plt.ylabel(r"%s" % (figtext[2]))
+        plt.legend(loc=(1.02, 0.75))
+        plt.savefig(filename+str(i-1)+"_"+str(i+1)+".svg",format="svg")
+        plt.clf()
+
+
+
+
+
+
+
 if __name__ == "__main__":
     # Execute only as script
     print "Please import module named {0} with Ipython".format(__name__)
