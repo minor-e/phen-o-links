@@ -1176,10 +1176,19 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
                 "boolean\n:{0}").format(df2[color_columns].values[0])
         raise TypeError(text)
 
+    #Ordering input!
+    color_columns = df2[color_columns].sum()
+    color_columns = color_columns.sort_values(ascending=False)
+    color_columns = color_columns.index.tolist()
+
     # Creating order of groups
     df2['Nr_True'] = [
-        np.nonzero(i != 0)[0][-1] + 1 for i in df2[color_columns].values]
+        np.max(np.nonzero(i != 0)[0]) for i in df2[color_columns].values]
     df2 = df2.sort_values(by='Nr_True')
+
+    # Removing overlapping categories
+    columns_dict = {i:v for i,v in enumerate(color_columns)}
+    color_columns = [columns_dict.get(i) for i in df2.Nr_True.unique()]
 
     # Creating color palette
     if len(color_columns) <= 5:
@@ -1201,7 +1210,9 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     palette_c, d_c, dl_c, ld_c, l_c = dataplotter_colorscheme(main=palette,
                                                               hues=hues_2)
     color_theme = palette_c + d_c + dl_c + ld_c + l_c
-    color_dict = {i + 1: x for i, x in enumerate(color_theme)}
+    color_dict = {
+        df2.Nr_True.unique()[i]:color_theme[i] for i in range(
+            len(color_theme))}
 
     df2 = ds.dataset_add_column_by_dict(df2, color_dict, Grouper="Nr_True",
                                         new_col="Color_coded")
@@ -1214,6 +1225,8 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     color_columns = [
         i.replace('_', ' ') for i in color_columns if i.count('_')]
     color_columns = dataplotter_textspacemanger(color_columns)
+    df2['Freq'] = df2.groupby('Nr_True')['Nr_True'].transform('count')
+    df2 = df2.sort_values(by='Freq', ascending=False)
 
     return df2, color_columns
 
@@ -2854,7 +2867,7 @@ def dataplotter_hierarchical_clustered_heatmap(
 def dataplotter_kde_plot(
         df, filename="untitle", index=[], columns=[],
         figlabels=["Title", "X label", "Y label"],
-        datalabels=["Data 1", "Data 2"], x_limits=(1, -1)):
+        datalabels=["Data 1", "Data 2"], x_limits=(-1, 1)):
     """Take a given data frame and returns 2 kernel density estimates lines.
 
     Parameters
@@ -2960,11 +2973,6 @@ def dataplotter_kde_plot(
         plt.legend(loc=(1.02, 0.75))
         plt.savefig(filename+str(i-1)+"_"+str(i+1)+".svg",format="svg")
         plt.clf()
-
-
-
-
-
 
 
 if __name__ == "__main__":
