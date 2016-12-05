@@ -1160,7 +1160,7 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     """
     #Local global
     palette = ['green', 'red', 'blue', 'yellow', 'colorblind']
-    hues_2 = ['light', 'light_dark', 'dark_light', 'dark']
+    hues_2 = ['light', 'lightdark', 'darklight', 'dark']
     type_c = np.array([False])
 
     # Coping frame
@@ -1200,7 +1200,7 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         add_to = 5 - remain
         n_slice = int((len(color_columns) + add_to) / 5)
         hues_2 = hues_2[::-1]
-        hues_2 = hues_2[:len(n_slice)]
+        hues_2 = hues_2[:n_slice]
 
     if len(color_columns) > 25:
         text = ("Please reconsider the amounts of groups to color code, n=25"
@@ -1212,7 +1212,7 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     color_theme = palette_c + d_c + dl_c + ld_c + l_c
     color_dict = {
         df2.Nr_True.unique()[i]:color_theme[i] for i in range(
-            len(color_theme))}
+            len(df2.Nr_True.unique()))}
 
     df2 = ds.dataset_add_column_by_dict(df2, color_dict, Grouper="Nr_True",
                                         new_col="Color_coded")

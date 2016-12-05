@@ -2837,6 +2837,128 @@ def dataset_median_batch_effect_calc(df,columns=[]):
     return df_work1, df_median
 
 
+def dataset_arctan2_test(df, columns=[], index=[], limits=[]):
+    """Takes any given 'df' and returns the arctan2 values for labels
+    given in 'columns'. The function test if limits arctan2 values
+    are >= or <= to the limits given in 'limits'.
+
+    Parameters
+    ----------
+
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the given pandas data frame with the wanted data.
+
+    columns, index : list(object)
+        The parameters called 'columns' and 'index' are column labels given as
+        strings. If left the parameters are left empty a function call is
+        triggered. The items given in 'columns' should be ordered as the y
+        values followed by x values. The 'columns' is limited to two items.
+
+    limits : list(object)
+        The parameter called ' limits' takes values as tuple pairs. The format
+        is '(minimum value,maximum value)' for two items in limits.
+        If left empty the limits will be set to (0, pi*0.5) and (pi*-0.5,0).
+
+    Returns
+    -------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' with new 'Arctan2' column with the calculated arctan2 values
+        form 'columns' and two extra columns with boolean values for limit
+        test.
+
+    """
+
+    #Local Globals
+    labels = ['limit_1', 'limit_2']
+
+    # Copying df
+    df1 = dataset_copy_frame(df)
+
+    #Checking inputs
+    if not (columns and index):
+        columns, index = dataset_pick_columns(df1, split='groupby')
+        del index
+
+    if not sum(df1.columns.isin(columns)):
+        text = ("The column labels given in 'columns' are not found in 'df'. "
+                "User input was{0}").format(columns)
+        raise ValueError(text)
+
+    if not limits:
+        limits =[(0, np.pi/2.0),(np.pi *-1/2.0,0)]
+        labels = ['Upper_Right_Corner', 'Bottom_Left_Corner']
+        print "The 'limits' are set to default values!"
+
+    if len(columns)%2 or len(limits)%2:
+        text = ("The 'columns' and 'limits' parameter must have two items. "
+                "User input for 'columns' was {0} and has length of {1}. "
+                "User input for 'limits' was {2} and has length of {3}. "
+                "**").format(columns, len(columns), limits,len(limits))
+
+    # Calculating the arctan values
+    y = df1[columns[0]].values
+    x = df1[columns[1]].values
+    df1['Arctan2_Values'] = np.arctan2(y,x)
+
+    # Boolean return for arctan2 test
+    df1[labels[0]] = (df1.Arctan2_Values.values >= limits[0][0]) & (
+        df1.Arctan2_Values <= limits[0][1])
+    df1[labels[1]] = (df1.Arctan2_Values.values<=limits[1][0]) & (
+        df1.Arctan2_Values <=limits[1][1])
+    df1['Arctan2_test'] = (df1[labels[0]].values==True) | (
+        df1[labels[1]].values==True)
+
+    return df1
+
+
+def dataset_on_identity_line(df, column=[], index=[], offset=0.05):
+    """Takes a pandas data frame that has calculated actan2 values in a column
+    and returns values that are of certain distance to a 1 to 1 identity line.
+
+    Parameters
+    ----------
+
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the given pandas data frame with the wanted data.
+
+    column, index : list(object)
+        The parameters called 'column' and 'index' are column labels given as
+        strings. If left the parameters are left empty a function call is
+        triggered.
+
+    offset : float(object)
+        The parameter called 'offset' determines how far from the identity
+        line the points are.
+
+    Returns
+    -------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' with new 'On_id_line' column and two extra columns with
+        boolean values for the points.
+    """
+    # Local Globals
+    pos_qc = np.arctan2(1,1)
+    neg_qc = np.arctan2(-1,-1)
+
+    # Copy frame
+    df1 = dataset_copy_frame(df)
+
+    if not (column and index):
+        column, index = dataset_pick_columns(df1, split='groupby')
+        del index
+
+    if not sum(df1.columns.isin(column)):
+        text = ("The column labels given in 'columns' are not found in 'df'. "
+                "User input was{0}").format(column)
+        raise ValueError(text)
+    df1['Id_line_neg'] = (df1[column[0]].values >= (neg_qc-offset)) & (
+        df1[column[0]].values <= (neg_qc+offset))
+    df1['Id_line_pos'] = (df1[column[0]].values <=(pos_qc+offset)) & (
+        df1[column[0]].values >= (pos_qc-offset))
+    df1['On_id_line'] = (df1.Id_line_pos == True) | (df1.Id_line_neg == True)
+
+    return df1
+
 # Main worker functions
 
 def dataset_export_ORF_names_for_GO_Enrichment(
@@ -3142,12 +3264,6 @@ def dataset_mu_and_sigma_test(df, n=None, columns=[]):
                         df2[i].values <= new_frame[i]['Mean'] - (
                             n * new_frame[i]['std']))
     return df2, new_frame
-
-
-
-
-
-
 
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
