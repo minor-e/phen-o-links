@@ -2960,17 +2960,19 @@ def dataplotter_kde_plot(
         nr = indices_key[i-1:i+1]
         for d in nr:
             df1_gr.get_group(d)[columns[0]].plot(
-                kind="kde", c="blue", ls='--', lw=2.5,
+                kind="kde", ls='--', lw=2.5,
                 label=r"%s" % (datatext[0] + str(d)))
             df1_gr.get_group(d)[columns[1]].plot(
-                kind="kde", c="cyan", lw=2.5,
+                kind="kde", lw=2.5,
                 label=r"%s" % (datatext[1] + str(d)))
         plt.xlim(x_limits)
         plt.axvline(x=0, color="black", ls='--', label=r"Origin", lw=1.0)
         plt.title(r"%s" % (figtext[0]))
         plt.xlabel(r"%s" % (figtext[1]))
         plt.ylabel(r"%s" % (figtext[2]))
-        plt.legend(loc=(1.02, 0.75))
+        plt.legend(loc=(1.02, 0.75), frameon=False)
+        plt.tick_params(axis="x", which="both", top="off")
+        plt.tick_params(axis="y", which="both", right="off")
         plt.savefig(filename+str(i-1)+"_"+str(i+1)+".svg",format="svg")
         plt.clf()
 
