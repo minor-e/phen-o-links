@@ -303,10 +303,10 @@ def dataplotter_object_table_maker(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                             data frame copy.
 
-    phenolinks.dataset.dataset_pick_columns : For more information
+    phen_o_links.dataset.dataset_pick_columns : For more information
                                               about "split" parameter.
     """
     # Copying frame
@@ -423,10 +423,10 @@ def dataplotter_stats_table_maker(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                              data frame copy.
 
-    phenolinks.dataset.dataset_filter_by_value : For more information
+    phen_o_links.dataset.dataset_filter_by_value : For more information
                                                   about "filter_val" parameter.
     """
     # Fixing text
@@ -780,7 +780,7 @@ def dataplotter_text_annotation_scatter(
     See Also
     --------
 
-    phenolinks.dataset.dataset_pairwise_distance_points : For more information
+    phen_o_links.dataset.dataset_pairwise_distance_points : For more information
                                                            about 'd' variable.
 
     """
@@ -886,7 +886,7 @@ def dataplotter_fixing_textformat():
     mpl.rc('font', **{'family': "sans-serif"})
     params = {'text.latex.preamble': [r'\usepackage{siunitx}',
                                       r'\usepackage{sfmath}',
-                                      r'\sisetup{detect-family = true}',
+                                      r'\sisetup{detect-all}',
                                       r'\usepackage{amsmath}']}
 
     plt.rcParams.update(params)
@@ -1130,28 +1130,65 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         plot.
     color_columns : list(object)
         The "color_columns" parameter are the columns that are to be colored
-        coded. The values in "color_columns" must be booleans.
+        coded. The values in "color_columns" must be booleans. Default value
+        for "color_columns" is set to null '[]' and triggers function call
+        that forces the user to pick column label(s) to use for color coding.
+
+    Returns
+    -------
+    df2
+        The "df2" is the given "df" object with one additional column
+        called "Color_coded".
+
+    color_columns
+        The "color_columns" is list object where the items are the column(s)
+        label(s) given.
+
+    Raises
+    ------
+    TypeError
+        If values for the labels in "color_columns" is not boolean typed.
+    ValueError
+        If number of labels in "color_columns" exceeds 25.
+
+    See Also
+    --------
+    phen_o_links.dataset_pick_columns : For more information about function
+                                        called made when "color_columns" is set
+                                        to null.
 
     """
     #Local global
     palette = ['green', 'red', 'blue', 'yellow', 'colorblind']
-    hues_2 = ['light', 'light_dark', 'dark_light', 'dark']
+    hues_2 = ['light', 'lightdark', 'darklight', 'dark']
     type_c = np.array([False])
+
+    # Coping frame
+    df2 = ds.dataset_copy_frame(df)
 
     # Picking columns
     if not color_columns:
-        color_columns, idx = ds.dataset_pick_columns(df, split='groupby')
+        color_columns, idx = ds.dataset_pick_columns(df2, split='groupby')
         del idx
-    print color_columns
 
-    if not df[color_columns].values.dtype == type_c.dtype:
+    if not df2[color_columns].values.dtype == type_c.dtype:
         text = ("The 'color_columns' given have items that are not "
-                "boolean\n:{0}").format(df[color_columns].values[0])
+                "boolean\n:{0}").format(df2[color_columns].values[0])
         raise TypeError(text)
 
+    #Ordering input!
+    color_columns = df2[color_columns].sum()
+    color_columns = color_columns.sort_values(ascending=False)
+    color_columns = color_columns.index.tolist()
+
     # Creating order of groups
-    df['Nr_True'] = [sum(i) for i in df[color_columns].values]
-    df = df.sort_values(by='Nr_True')
+    df2['Nr_True'] = [
+        np.max(np.nonzero(i != 0)[0]) for i in df2[color_columns].values]
+    df2 = df2.sort_values(by='Nr_True')
+
+    # Removing overlapping categories
+    columns_dict = {i:v for i,v in enumerate(color_columns)}
+    color_columns = [columns_dict.get(i) for i in df2.Nr_True.unique()]
 
     # Creating color palette
     if len(color_columns) <= 5:
@@ -1163,9 +1200,9 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         add_to = 5 - remain
         n_slice = int((len(color_columns) + add_to) / 5)
         hues_2 = hues_2[::-1]
-        hues_2 = hues_2[:len(n_slice)]
+        hues_2 = hues_2[:n_slice]
 
-    if len(color_columns) >= 25:
+    if len(color_columns) > 25:
         text = ("Please reconsider the amounts of groups to color code, n=25"
                 "or more. This will not work well!")
         raise ValueError(text)
@@ -1173,11 +1210,23 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     palette_c, d_c, dl_c, ld_c, l_c = dataplotter_colorscheme(main=palette,
                                                               hues=hues_2)
     color_theme = palette_c + d_c + dl_c + ld_c + l_c
-    color_dict = {i + 1: x for i, x in enumerate(color_theme)}
+    color_dict = {
+        df2.Nr_True.unique()[i]:color_theme[i] for i in range(
+            len(df2.Nr_True.unique()))}
 
-    df2 = ds.dataset_add_column_by_dict(df, color_dict, Grouper="Nr_True",
+    df2 = ds.dataset_add_column_by_dict(df2, color_dict, Grouper="Nr_True",
                                         new_col="Color_coded")
-    del df2['Nr_True']
+    #del df2['Nr_True']
+
+    # Ordering labels to match color_coding
+    t_table = df2[color_columns].sum()
+    t_table = t_table.sort_values(ascending=False)
+    color_columns = t_table.index.tolist()
+    color_columns = [
+        i.replace('_', ' ') for i in color_columns if i.count('_')]
+    color_columns = dataplotter_textspacemanger(color_columns)
+    df2['Freq'] = df2.groupby('Nr_True')['Nr_True'].transform('count')
+    df2 = df2.sort_values(by='Freq', ascending=False)
 
     return df2, color_columns
 
@@ -1431,14 +1480,15 @@ def dataplotter_scatter_x_y_plot(
         markersize=20, fig_title='Untitled',
         x_title='Untitled', y_title='Untitled', datapoints='Untitled',
         regtext='Untitled', fig_fontsize=[12, 10, 8], all_axis=False,
-        spines=[False, True, False, True], a_txt=True, trn=0.5, trn2=0.5):
+        spines=[False, True, False, True], a_txt=True, c_txt=True, trn=0.5,
+        trn2=0.5):
     """Takes a data frame object from pandas and returns scatter plot
     of two columns either with or without regression line.
 
     Parameters
     ----------
     df : pandas.core.frame.DataFrame(object)
-        Input data frame
+        Input data frame.
 
     filter_val : float, int
         Value for filtering picked columns. The "filter_val" parameter also
@@ -1461,29 +1511,22 @@ def dataplotter_scatter_x_y_plot(
         The 'extra_features' is list that only accepts boolean values.
         The parameter adds extra features upon rendered scatter figure.
         The order in 'extra_features' have different properties
-
-        'extra_features' = ['Identity Line', 'Grid Line',
-                            'Linear Regression', 'Frame around figure legend',
-                            'Shadow behind figure legend']
-
+        'extra_features' = ['Identity Line', 'Grid Line','Linear Regression',
+        'Frame around figure legend','Shadow behind figure legend']
         The default setting is all 'extra_features' options to False
         except for 'Shadow behind figure legend'.
 
     func_call : list (optional)
-        The 'func_call' accepts only boolean values. The item
-        order calls different functions, where 'outliers' are assigned.
-        The 'func_call' default setting is
-        'func_call' = [False, False, False],
-        and no function calls are
-        executed.
+        The 'func_call' accepts only boolean values. The item order calls
+        different functions, where 'outliers' are assigned. The 'func_call'
+        default setting is 'func_call' = [False, False, False], and no
+        functions are executed.
 
     sub_frame : list(optional)
-        The 'sub_frame' parameter has 2 valid type inputs
-        in the following order
-
-        'sub_frame' = [df(object), str(object)]
-
-        If sub_frame option is in use, the 'func_call'
+        The 'sub_frame' parameter has 2 valid type inputs in the following
+        order 'sub_frame' = [df(object), str(object)]
+        If str(object) is set to "Color_code" and function for coloring
+        subframe is activated.If sub_frame option is in use, the 'func_call'
         is disable.
 
     markersize : float, int (optional)
@@ -1522,7 +1565,7 @@ def dataplotter_scatter_x_y_plot(
         The values determines visibility of spines a True equals to visible.
         The default values for "spines" is [False, True, False, True].
 
-    a_txt : boolean(optional)
+    a_txt, c_txt : boolean(optional)
         The parameter called 'a_txt' accepts only booleans and is responsible
         for visualizes point annotation given by 'index' set by functional.
         Default setting for 'a_txt' is set to 'True'
@@ -1534,16 +1577,20 @@ def dataplotter_scatter_x_y_plot(
 
     Returns
     -------
-    fig1 : plt.figure (object)
-        The figure displayed with sub plot.
-        for more information about object
-        search in Matplotlib documentation
-        matplotlib.figure.Figure
-    ax : added subplot and axes (object)
-        All information about subplot.
-        For more information see
-        Matplotlib and search for
-        matplot.axes._subplots.AxesSubplot
+    fig1
+        The "fig1" is a plt.figure (object). The figure displayed with sub
+        plot. For more information about figure objects search in Matplotlib
+        documentation matplotlib.figure.Figure
+
+    ax
+        The added axes for the "fig1"(object). More information about subplot
+        axes search for matplot.axes._subplots.AxesSubplot in Matplotlib
+        documentation.
+
+    Raises
+    ------
+    ValueError
+        If "sub_frame" labels are not found in main data frame ('df').
 
     See Also
     --------
@@ -1559,18 +1606,22 @@ def dataplotter_scatter_x_y_plot(
     dataplotter_x_y_limit : For more information about axis
                             limitation with "filter_val".
 
+    dataplotter_color_code_subframe : For more information about color coding
+                                      "sub_frame".
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
-                                            data frame copy.
-    phenolinks.dataset.dataset_top_and_bottom: For more information about
-                                               'num', 'percentage' and
-                                               'func_call'.
 
-    phenolinks.dataset.dataset_filter_by_value : For more information about
-                                                 "filter_val" parameter.
+    phen_o_links.dataset.dataset_copy_frame : For more information about
+                                              data frame copy.
 
-    phenolinks.dataset.dataset_regline : For more information about regression
-                                         line.
+    phen_o_links.dataset.dataset_top_and_bottom : For more information about
+                                                  'num', 'percentage' and
+                                                  'func_call'.
+
+    phen_o_links.dataset.dataset_filter_by_value : For more information about
+                                                   "filter_val" parameter.
+
+    phen_o_links.dataset.dataset_regline : For more information about
+                                           regression line.
 
     """
     # Fixing text
@@ -1752,8 +1803,8 @@ def dataplotter_scatter_x_y_plot(
             print "Entering 'colorcoded' mode!"
             df_outlier3, label_colors = dataplotter_color_code_subframe(
                 subset2)
-            m_color = set(df_outlier3.Color_coded)
-            m_color = list(m_color)
+            m_color = df_outlier3.Color_coded.unique()
+            #m_color = list(m_color)
             gr = df_outlier3.groupby('Color_coded')
             for i in range(len(m_color)):
                 ax.scatter(
@@ -1761,6 +1812,17 @@ def dataplotter_scatter_x_y_plot(
                     gr.get_group(m_color[i])[columns[1]].values,
                     c=m_color[i], marker='o', s=markersize, lw=0,
                     alpha=trn2, label=r"{%s}" % (label_colors[i]))
+
+        if c_txt:
+            print "Color coded Annotations for groups size of n <= 30!"
+            t_frame = pd.DataFrame(gr.size() <= 30, columns=['Trues'])
+            t_db = t_frame.sort_values('Trues', ascending=False)
+            n_db = np.nonzero(t_db.Trues)[0][-1] + 1
+            t_db = t_db[:n_db]
+            left_c = t_db.index.tolist()
+            df_outlier3['Outlier_c'] = df_outlier3.Color_coded.isin(left_c)
+            df_outlier2 = df_outlier3[df_outlier3.Outlier_c == True]
+
 
         if a_txt:
         # Points are getting names.
@@ -1888,7 +1950,7 @@ def dataplotter_boxplot(
 
     See Also
     --------
-    phenolinks.dataset.dataset_pick_columns : For more information about
+    phen_o_links.dataset.dataset_pick_columns : For more information about
                                               "split"
 
     """
@@ -2162,10 +2224,10 @@ def dataplotter_line(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                              data frame copy.
 
-    phenolinks.dataset.dataset_pick_columns : For more information
+    phen_o_links.dataset.dataset_pick_columns : For more information
                                                about "split" parameter.
     """
     # Local variables
@@ -2266,12 +2328,12 @@ def dataplotter_histogram_outliers(
     dataplotter_fixing_textformat : For more information about
                                     latex rendering
 
-    phenolinks.dataset.dataset_copy_frame : For more information about
+    phen_o_links.dataset.dataset_copy_frame : For more information about
                                              data frame copy.
 
-    phenolinks.dataset.dataset_pick_columns : For more information
+    phen_o_links.dataset.dataset_pick_columns : For more information
                                                about "split" parameter.
-    phenolinks.dataset.dataset_outliers2 : For more information
+    phen_o_links.dataset.dataset_outliers2 : For more information
                                             about outliers calculation parameter.
     """
 
@@ -2802,6 +2864,121 @@ def dataplotter_hierarchical_clustered_heatmap(
     return fig1, df_cluster
 
 
+def dataplotter_kde_plot(
+        df, filename="untitle", index=[], columns=[],
+        figlabels=["Title", "X label", "Y label"],
+        datalabels=["Data 1", "Data 2"], x_limits=(-1, 1)):
+    """Take a given data frame and returns 2 kernel density estimates lines.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the given pandas DataFrame (object)
+
+    filename : str(object)
+        The 'filename' is the relative path from current working directory.
+
+    index, columns : list(object)
+        The parameter called 'index' and 'columns' are specify data input.
+        The 'index' groups the 'df' in nth amount of indices and the
+        'columns' parameter specify the 2 labels with values.
+
+    figlabels : list(object)
+        The parameter called 'figlabels' is list object with the
+        length of 3 items. The order of the items determines different
+        features. 1th item is title, 2nd item is xlabel, 3rd item is ylabel.
+
+    datalabels : list(object)
+        The parameter called 'datalabels' has length of 2 items
+        which corresponds to the data inputs given in 'columns'.
+
+    x_limits : tuple(object)
+        The parameter called 'x_limits' determines the x-axis range
+        form x-max to x-minimum value.
+
+    Returns
+    -------
+    svg : figure(object)
+
+        The function returns nth amount of figure at the current
+        working directory.
+
+    Raises
+    ------
+    ValueError
+        If 'columns' or 'index' items not found in main 'df'.
+        If 'filename' is not a string object.
+    IndexError
+        If 'index' given to group 'df' is not divisible by 2.
+
+    See Also
+    --------
+    phen_o_links.dataset.dataset_pick_columns : For more information about
+                                                function called when 'index'
+                                                and 'columns' is empty.
+    """
+
+    # Global Local
+    indices_key = []
+
+    # Copy frame
+    df1 = ds.dataset_copy_frame(df)
+
+    figtext = dataplotter_textspacemanger(figlabels)
+    datatext = dataplotter_textspacemanger(datalabels)
+
+    # Function call
+    if not(index and columns):
+        columns, index = ds.dataset_pick_columns(df1, split="groupby")
+
+    if not isinstance(filename, str):
+        text = ("Make sure that 'filename' parameter is a string object."
+                " User input was {0}").format(filename)
+        raise ValueError(text)
+
+    if index and columns:
+        var = index + columns
+        df1_columns = df1.columns.tolist()
+        test = [i for i in var if i not in df1_columns]
+        if test:
+            text = ("Items given in 'columns' are not found "
+                    "User input {0}").format(var)
+            raise ValueError(text)
+
+    # Creating pandas object thats is grouped by index
+    df1_gr = df1.groupby(index)
+    indices_key = df1_gr.indices.keys()
+
+    if len(indices_key) % 2:
+        text = ("This function is viable if indices for a given index "
+                "is divisible with 2. The length of indices given by "
+                "'index' parameter is {0}").format(len(indices_key))
+        raise IndexError(text)
+
+    # Loop that plots stuff
+    for i in indices_key[::2]:
+        nr = indices_key[i-1:i+1]
+        for d in nr:
+            df1_gr.get_group(d)[columns[0]].plot(
+                kind="kde", ls='--', lw=2.5,
+                label=r"%s" % (datatext[0] + str(d)))
+            df1_gr.get_group(d)[columns[1]].plot(
+                kind="kde", lw=2.5,
+                label=r"%s" % (datatext[1] + str(d)))
+        plt.xlim(x_limits)
+        plt.axvline(x=0, color="black", ls='--', label=r"Origin", lw=1.0)
+        plt.title(r"%s" % (figtext[0]))
+        plt.xlabel(r"%s" % (figtext[1]))
+        plt.ylabel(r"%s" % (figtext[2]))
+        plt.legend(loc=(1.02, 0.75), frameon=False)
+        plt.tick_params(axis="x", which="both", top="off")
+        plt.tick_params(axis="y", which="both", right="off")
+        plt.savefig(filename+str(i-1)+"_"+str(i+1)+".svg",format="svg")
+        plt.clf()
+
+
 if __name__ == "__main__":
     # Execute only as script
     print "Please import module named {0} with Ipython".format(__name__)
+
+

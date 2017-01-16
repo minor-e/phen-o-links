@@ -403,11 +403,11 @@ def data_assembler_subsetter(
 
     See Also
     --------
-    phenolinks.dataset_pick_columns : For more information about function call
+    phen_o_links.dataset_pick_columns : For more information about function call
                                       called when 'columns' and 'index' are
                                       left empty.
 
-    phenolinks.dataset_filesave : To save csv-files from 'new_order' return
+    phen_o_links.dataset_filesave : To save csv-files from 'new_order' return
 
     """
     # Local global
@@ -586,10 +586,10 @@ def data_assembler_reorder(df=[], filepath='', columns=[], delimiter='\t'):
 
     See Also
     --------
-    phenolinks.dataset_pick_columns : For more information about function call
+    phen_o_links.dataset_pick_columns : For more information about function call
                                       made when 'columns' empty
 
-    phenolinks.dataset_filesave : To save csv-files from 'new_order' return
+    phen_o_links.dataset_filesave : To save csv-files from 'new_order' return
 
     """
     #Local Global
@@ -701,7 +701,7 @@ def data_assembler_unique_keys(df=[]):
 
     data_assembler_subsetter : For more information about how to split data.
 
-    phenolinks.dataset_flag_remover : To format 'ORF'- names properly
+    phen_o_links.dataset_flag_remover : To format 'ORF'- names properly
 
     Notes
     -----
@@ -762,11 +762,11 @@ def data_assembler_global_uniquekeys(df, column=''):
 
     See Also
     --------
-    phenolinks.dataset_to_dict : For more information about 'global_key'.
+    phen_o_links.dataset_to_dict : For more information about 'global_key'.
 
-    phenolinks.dataset_flag_remover : For orf name formatting.
+    phen_o_links.dataset_flag_remover : For orf name formatting.
 
-    phenolinks.dataset_add_column_by_dict : For more information on how to
+    phen_o_links.dataset_add_column_by_dict : For more information on how to
                                             'global_key' to pandas data frames.
 
     Notes
@@ -840,7 +840,7 @@ def data_assembler_merge_frames(df=[], key=''):
 
     See Also
     --------
-    phenolinks.dataset_filesave : For more information about function called
+    phen_o_links.dataset_filesave : For more information about function called
                                   when is empty 'key'.
 
 
