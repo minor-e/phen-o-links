@@ -3177,7 +3177,7 @@ def dataset_import_goterms(
 def dataset_mu_and_sigma_test(df, n=None, columns=[]):
     """Take a columns labels and calculates the mean and standard deviation
     (std) for that given label checks if value x from label passes the
-    threshold calledt, t = mean +/- n x std. The function will check if x>=t
+    threshold called, t = mean +/- n x std. The function will check if x>=t
     or x<=t. Function will always return mu and sigma test for n=2 and n=3.
 
     Parameters
@@ -3265,6 +3265,115 @@ def dataset_mu_and_sigma_test(df, n=None, columns=[]):
                             n * new_frame[i]['std']))
     return df2, new_frame
 
+
+def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
+    """ The takes any given 'df' and calculates six sigmas cutoffs from a given
+    null model against observed data. The function assumes that variation found
+    in null model is equal to observed data and that observed data is normally
+    distributed.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is pandas data frame that contains observed data and null
+        hypothesis data.
+
+    n : int, float(optional)
+        The 'n' is an optional parameter that is multiplied with standard
+        deviation of the "null_column" to get cutoffs. If 'n' parameters is
+        a extra column is added to 'df'.
+
+    obs_column : list(object)
+        The 'obs_column' is list that accepts only strings and has a length of
+        one. The 'obs_column' is column label in 'df' with observed data.
+
+    null_column : list(object)
+        The 'null_column' is used in the same matter as 'obs_column', but
+        specifies the label for null data. The 'null_column' accepts only
+        strings and has a length of one.
+
+    Returns
+    -------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' contains 6 or 7 new columns that has been tested for window
+        6 sigmas from null hypothesis and/or a custom 'n' factor.
+        The columns are labeled as' null_std_x_' followed by multiplied
+        integers.
+
+    six_sigmas : pandas.core.frame.DataFrame(object)
+        The is the standard deviation from null used in test for cutoffs.
+
+
+    Raises
+    ------
+    ValueError
+        If parameters 'obs_column' or 'null_column' are left empty,
+        length greater than one and column label is not found.
+    """
+    # Locale Global
+    l3 = []
+    six_sigmas = pd.DataFrame(
+        index=range(7),
+        columns=["Null_Sigmas", "Left", "Right"]).fillna(np.nan)
+    six_sigmas.Null_Sigmas = [int(i) for i in range(7)]
+    columns = df.columns.tolist()
+    # Copy 'df' frame
+    df1 = dataset_copy_frame(df)
+
+    # Check that inputs are correct
+    if (len(obs_column) and len(null_column)) != 1:
+        text = ("Parameters 'obs_column' and 'null_column' is either empty"
+                " or not equal to one!\n ('obs_column', {0}) 'null_column'"
+                " , {1}").format(obs_column, null_column)
+        raise ValueError(text)
+
+    l3 = obs_column + null_column
+
+    if not sum([isinstance(i, str) for i in l3]) == 2:
+        text = ("Parameters 'obs_column' and 'null_column' are not stings!"
+                "\n obs_column = {0}, null_column = {1}"
+                " ").format(obs_column, null_column)
+        raise ValueError(text)
+
+    if not sum([i in df1.columns for i in l3]) == 2:
+        text = ("Items in given in 'obs_column' and/or 'null_column' was not"
+                " found has a column label in 'df'."
+                "\n 'df' columns = {0}\n "
+                "obs_column={1}\n "
+                "null_column{2}. "
+                " ").format(columns, obs_column, null_column)
+        raise ValueError(text)
+
+    # Calculating mean and std from null_column values.
+    mu = df1[null_column[0]].mean()
+    sigma = df1[null_column[0]].std()
+
+    # Testing null hypothesis
+    for i in six_sigmas.Null_Sigmas.values:
+        df1[str(obs_column[0]) + '_' + str(i) + '_x_sigmas'] = (
+            df1[obs_column[0]].values >= mu + i * sigma) | (
+                df1[obs_column[0]].values <= mu - (i * sigma))
+
+    # Adding data cut offs to six_sigmas frame.
+    six_sigmas.Left = [
+        (mu - (sigma * i)) for i in six_sigmas.Null_Sigmas.values]
+    six_sigmas.Right = [
+        (mu + (sigma * i)) for i in six_sigmas.Null_Sigmas.values]
+
+    if n:
+        n = float(n)
+        df1[str(obs_column[0]) + '_' + str(n) + '_x_sigmas'] = (
+            df1[obs_column[0]].values >= mu + n * sigma) | (
+                df1[obs_column[0]].values <= mu - (n * sigma))
+        n_values = [n, mu - (n * sigma), mu + (n * sigma)]
+
+        n_frame = pd.DataFrame(n_values)
+        n_frame = n_frame.T
+        n_frame.columns = six_sigmas.columns
+        six_sigmas = six_sigmas.append(n_frame)
+
+    # Returning test
+    return df1, six_sigmas
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
     """ Takes data frame
