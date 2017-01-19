@@ -3372,8 +3372,13 @@ def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
         n_frame.columns = six_sigmas.columns
         six_sigmas = six_sigmas.append(n_frame)
 
-    # Returning test
+    # Adding original null std and mean to six_sigmas frame
+    six_sigmas["Null_mean"] = mu
+    six_sigmas["Null_std"] = sigma
+
+    # Returning df1 and six_sigmas
     return df1, six_sigmas
+
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
     """ Takes data frame

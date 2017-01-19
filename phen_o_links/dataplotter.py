@@ -890,6 +890,7 @@ def dataplotter_fixing_textformat():
                                       r'\usepackage{amsmath}']}
 
     plt.rcParams.update(params)
+    return "Text input has been formatted in params"
 
 
 def dataplotter_textspacemanger(text_list, pattern=' ', output="\ "):
@@ -2975,6 +2976,143 @@ def dataplotter_kde_plot(
         plt.tick_params(axis="y", which="both", right="off")
         plt.savefig(filename+str(i-1)+"_"+str(i+1)+".svg",format="svg")
         plt.clf()
+    return "Figures are done"
+
+
+def dataplotter_kde_six_sigmas_cutoff(
+    df, six_sigmas, obs_column=[""], filename="untitled",
+    figlabels=["Untitle", "X axis", "Y axis"], datalabel=["Data Observed"],
+    xlimits=(-1,1)):
+    """
+    The function renders kernel density plot over observed data with sigmas
+    cutoffs from a given null hypothesis. The null hypothesis are labelled with
+    subscript empty set symbol(see google search latex emptyset).
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The "df" parameter is a pandas data frame that contain the label
+        with the observed data.
+
+    six_sigmas : pandas.core.frame.DataFrame(object)
+        The 'six_sigmas' is a pandas data frame returned from function call
+        ds.dataset_six_sigmas_cutoff. The frame contains the sigmas values
+        produced in figure.
+
+    obs_column : list(object)
+        The "obs_column" contains the column label of the observed data.
+        The obs_column accepts only strings as item and has length of 1.
+
+    filename : str(optional)
+        The 'filename' parameter is the relative path from current working
+        directory. The parameter both points to location of saving file and
+        it's the name of the file.
+
+    figlabels, datalabel : list(optinal)
+        The 'figlabels' and 'datalabel' are the figure annotation text.
+        Both parameters are accepts only strings as input. The input order for
+        'figlabels' matters! Frist item is figure title, second item is x-axis
+        label and last entry is y axis label. The parameter 'datalabel' is the
+        label used for 'observed data' in figure.
+
+    xlimits : tuple(object)
+        The parameters 'xlimits' is tuple object, which determines the x-axis
+        range of the figure.
+
+    Returns
+    svg : file
+        The function returns a svg file in the end.
+
+    Raises
+    ------
+    ValueError
+        If 'filename' and 'obs_column' are not string typed.
+        If 'obs_column' is not found or length is not equal to one.
+        If 'obs_column' label and 'six_sigma' label is not present as a column
+        label.
+
+    See Also
+    --------
+    phen_o_links.dataset_six_sigmas_cutoff : For more information about
+                                             'six_sigmas' data frame.
+
+    """
+    # Local Global
+    datatext = []
+    figtext = []
+    colors = ['green', 'red', 'yellow', 'colorblind']
+    shades = ['light', 'darklight', 'dark', 'lightdark']
+    mean_dict = {0:r"Mean$_{\emptyset}$"}
+    no_value = r" x sigmas$_{\emptyset}$"
+    colors2 = []
+
+    # Copy frame
+    df1 = ds.dataset_copy_frame(df)
+
+    # Checking input
+    if not(isinstance(filename,str)):
+        text = ("{0} not a string typed").format(filename)
+        raise ValueError(text)
+    if not (len(obs_column)==1 and isinstance(obs_column[0],str)):
+        text = ("{0} not a string typed or length is not").format(obs_column)
+        raise ValueError(text)
+
+    # Checking column labels
+    c1 = obs_column[0] in df1.columns
+    c2 = "Null_mean" in six_sigmas.columns
+
+    if not(c1 and c2):
+        text = ("Label input in 'obs_column' found: {0}"
+                "\nLabel input in 'six_sigmas' found : {1}"
+                "").format(c1,c2)
+        raise ValueError
+
+    # Creating color pallet
+    m,l, ld, dl, d = dataplotter_colorscheme(main=colors, hues=shades)
+    l_colors = m + l + ld + dl + d
+    l_colors = [i for i in l_colors if i]
+
+    # Picking colors
+    while len(six_sigmas) > len(colors2):
+        picked_color = set(np.random.choice(l_colors, len(six_sigmas)))
+        colors2 = picked_color
+
+    # Creating list with colors
+    colors2 = list(colors2)
+    # Fixing text
+    figtext = dataplotter_textspacemanger(figlabels)
+    datatext = dataplotter_textspacemanger(datalabel)
+    mu_null = str(np.around(six_sigmas.Null_mean[0], 4))
+    std_null = str(np.around(six_sigmas.Null_std[0], 4))
+    mean_dict[0] = r"%s" %("Mean$_{\emptyset}$ = " + mu_null)
+
+    # Plotting data
+    df1[obs_column[0]].plot(
+        kind="kde", lw=2.5, c="#0C5F83", ls="-", label=r"%s" % (datatext[0]))
+    # Adding std null to legend
+    plt.axvline(x=0, c="black", ls="-.", lw=0,
+                label=r"%s" % (r"std$_{\emptyset}$ =\ "+std_null))
+
+    # Adding cutoffs from six sigmas frame
+    for i in range(len(six_sigmas)):
+        plt.axvline(
+            x=six_sigmas.Left.values[i], lw=2.5, ls="--", c=colors2[i])
+        plt.axvline(
+            x=six_sigmas.Right.values[i], ls="--",lw=2.5,
+            c=colors2[i], label=r"%s" % (mean_dict.get(i,str(i) + no_value)))
+
+    # Adding figure text and saving!
+    plt.xlim(xlimits)
+    plt.title(r"%s" % (figtext[0]))
+    plt.xlabel(r"%s" % (figtext[1]))
+    plt.ylabel(r"%s" % (figtext[2]))
+    plt.legend(loc=(1.02, 0.5), frameon=False)
+    plt.tick_params(axis="x", which="both", top="off")
+    plt.tick_params(axis="y", which="both", right="off")
+    plt.savefig(filename+".svg",format="svg")
+    plt.clf()
+    plt.close("all")
+    return "Figure with sigmas cut offs is done"
 
 
 if __name__ == "__main__":
