@@ -1474,6 +1474,122 @@ def dataplotter_barplot(
     return fig1, ax1
 
 
+def dataplotter_bar_plot_simple(
+    df, columns=[], index=[], figlabels=["Title", "X axis", "Y axis"],
+    datalabels=[],y_log=False, rot=90.0):
+    """ Take a given pandas data frame and returns a simple bar plot.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is a pandas data frame with the data.
+
+    columns, index : list(optional)
+        The parameters called 'columns' and 'index' are the column labels
+        present in 'df'. The 'columns' is the individual bars plotted
+        and the 'index' is the x-axis labels under each bar. If parameters
+        are left empty, function call is triggered.
+
+    figlabels : list(optional)
+        The 'figlabels' is list object with the length of 3, which renders the
+        figure text. The order of nth- items in 'figlabels' corresponds to
+        different properties of text. The first item is figure title, seconds
+        item is the x-axis label and the last item is the y-axis label.
+
+    datalabels : list(optinal)
+        The 'datalabels' is an optional list. The items in "datalables" is the
+        legend text of the figure. The items corresponds to the order columns.
+
+    rot : float(optional)
+        The 'rot' rotates the x-axis major tick labels a certain degrees.
+
+    Returns
+    -------
+    fig1 : matplotlib.figure.Figure(object)
+        The 'fig1' is the figure plotted.
+
+    ax1 : matplotlib.axes._subplots.AxesSubplot(object)
+        The 'ax1' is the axes of the figure object.
+
+    Raises
+    ------
+        None error have been accounted for!
+
+    See Also
+    --------
+    dataplotter_save_figure : "fig1" return is used for save.
+
+    dataplotter_x_y_tick_remover : For information about tick remover
+
+    dataplotter_fixing_textformat : For more information about text rendering
+
+    phen_o_links.dataset.dataset_copy_frame : For more information about
+                                              data frame copy.
+
+    phen_o_links.dataset.dataset_pick_columns : For more information about
+                                                function call if 'columns'
+                                                or 'index' is left empty.
+    """
+
+    # Copying main data
+    rot = float(rot)
+    df1 = ds.dataset_copy_frame(df)
+
+    # Fixes removes under score from column label(s).
+    df1.columns = [i.replace("_", " ") for i in df1.columns.tolist()]
+
+    # Check that inputs are correct
+    if not(columns and index):
+        columns, index = ds.dataset_pick_columns(df1, split="groupby")
+
+    # Converting to latex styled text
+    dataplotter_fixing_textformat()
+
+    figure_text = dataplotter_textspacemanger(figlabels)
+
+    # Creating figure
+    fig1 = plt.figure(figsize=(8, 6))
+    ax1 = fig1.add_subplot(1,1,1)
+
+    # Plotting things
+    df1[columns].plot(kind="bar", ax=ax1)
+
+    # Removing y and x tick
+    dataplotter_x_y_tick_remover(ax1)
+
+    ax1.xaxis.set_ticklabels(
+        list(np.ravel(df1[index].values)),rotation=rot)
+
+    if y_log:
+        ax1.set_yscale("log")
+
+    # Checking for "datalabels" option
+    h, l = ax1.get_legend_handles_labels()
+
+    if datalabels:
+        datalabels= dataplotter_textspacemanger(
+            datalabels, pattern="_", output=" ")
+        datalabels = dataplotter_textspacemanger(datalabels)
+        if not(len(l) == len(datalabels)):
+            text=("Legend labels are not changed!")
+            print text
+            datalabels = l
+        l = datalabels
+
+    # Adding text to figure
+    ax1.legend(h,l, frameon=False)
+
+    plt.title(r"%s" % (figure_text[0]))
+    plt.ylabel(r"%s" % (figure_text[2]))
+    plt.xlabel(r"%s" % (figure_text[1]))
+
+    plt.show()
+    print "Don't for get to save figure!"
+
+    return fig1, ax1
+
+
+
 def dataplotter_scatter_x_y_plot(
         df, filter_val, sub_limit, percentage, number=5,
         extra_features=[False, False, False, False, True],
