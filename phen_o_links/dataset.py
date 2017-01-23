@@ -3376,6 +3376,18 @@ def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
     six_sigmas["Null_mean"] = mu
     six_sigmas["Null_std"] = sigma
 
+    # Adding additional columns
+    left = [
+        sum(df1[obs_column[0]].values <= i) for i in six_sigmas.Left.values]
+    right = [
+        sum(df1[obs_column[0]].values >= i) for i in six_sigmas.Right.values]
+    six_sigmas["Left_Passed"] = left
+    six_sigmas["Right_Passed"] = right
+    six_sigmas["Total_Passed"] = six_sigmas.Left_Passed + six_sigmas.Right_Passed
+    six_sigmas["Total_Pr"] = six_sigmas.Total_Passed/float(len(df1))
+    six_sigmas["Left_Pr"] = six_sigmas.Left_Passed/float(len(df1))
+    six_sigmas["Right_Pr"] = six_sigmas.Right_Passed/float(len(df1))
+
     # Returning df1 and six_sigmas
     return df1, six_sigmas
 
