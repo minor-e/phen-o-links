@@ -1583,7 +1583,6 @@ def dataset_label_checker(
         return 'Ask your local pandas wiz for help!'
 
 
-
 def dataset_expected_values(df, median=False, genenorm=[], new_columns=[]):
     """The function return the expected normalised value of experiment.
     Example the observed mean value for XC gene deletion is calculated by
@@ -3266,7 +3265,7 @@ def dataset_mu_and_sigma_test(df, n=None, columns=[]):
     return df2, new_frame
 
 
-def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
+def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
     """ The takes any given 'df' and calculates six sigmas cutoffs from a given
     null model against observed data. The function assumes that variation found
     in null model is equal to observed data and that observed data is normally
@@ -3312,6 +3311,8 @@ def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
     """
     # Locale Global
     l3 = []
+    n1 = []
+    values = []
     six_sigmas = pd.DataFrame(
         index=range(7),
         columns=["Null_Sigmas", "Left", "Right"]).fillna(np.nan)
@@ -3348,9 +3349,28 @@ def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
     mu = df1[null_column[0]].mean()
     sigma = df1[null_column[0]].std()
 
+    # Checking for custom cutoff
+    if n:
+        # Checking that input is correct
+        try:
+            n1 = [float(i) for i in n]
+
+        except ValueError:
+            text = ("Item {0} input in 'n' parameter not a digit."
+                    "Try to convert items until {0}").format(i)
+            print text
+
+            n1 = [float(i) for i in n[:n.index(i)]]
+        values = six_sigmas.Null_Sigmas.tolist() + n1
+        six_sigmas = pd.DataFrame(
+            index=range(len(values)),
+            columns=["Null_Sigmas", "Left", "Right"]).fillna(np.nan)
+        six_sigmas.Null_Sigmas = values
+        six_sigmas = six_sigmas.sort_values(by="Null_Sigmas")
+
     # Testing null hypothesis
     for i in six_sigmas.Null_Sigmas.values:
-        df1[str(obs_column[0]) + '_' + str(i) + '_x_sigmas'] = (
+        df1[str(obs_column[0]) + '_' + str(i) + "_x_sigmas"] = (
             df1[obs_column[0]].values >= mu + i * sigma) | (
                 df1[obs_column[0]].values <= mu - (i * sigma))
 
@@ -3359,18 +3379,6 @@ def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
         (mu - (sigma * i)) for i in six_sigmas.Null_Sigmas.values]
     six_sigmas.Right = [
         (mu + (sigma * i)) for i in six_sigmas.Null_Sigmas.values]
-
-    if n:
-        n = float(n)
-        df1[str(obs_column[0]) + '_' + str(n) + '_x_sigmas'] = (
-            df1[obs_column[0]].values >= mu + n * sigma) | (
-                df1[obs_column[0]].values <= mu - (n * sigma))
-        n_values = [n, mu - (n * sigma), mu + (n * sigma)]
-
-        n_frame = pd.DataFrame(n_values)
-        n_frame = n_frame.T
-        n_frame.columns = six_sigmas.columns
-        six_sigmas = six_sigmas.append(n_frame)
 
     # Adding original null std and mean to six_sigmas frame
     six_sigmas["Null_mean"] = mu
@@ -3387,6 +3395,7 @@ def dataset_six_sigmas_cutoff(df, n=None, obs_column=[], null_column=[]):
     six_sigmas["Total_Pr"] = six_sigmas.Total_Passed/float(len(df1))
     six_sigmas["Left_Pr"] = six_sigmas.Left_Passed/float(len(df1))
     six_sigmas["Right_Pr"] = six_sigmas.Right_Passed/float(len(df1))
+
 
     # Returning df1 and six_sigmas
     return df1, six_sigmas
