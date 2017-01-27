@@ -1544,8 +1544,11 @@ def dataplotter_bar_plot_simple(
 
     # Converting to latex styled text
     dataplotter_fixing_textformat()
-
     figure_text = dataplotter_textspacemanger(figlabels)
+
+    # Making y-ticks
+    max_tick = np.ceil(np.log10(df1.max().max()))
+    y_ticks = np.arange(0, max_tick*10**(max_tick-1)+1,100)[::2]
 
     # Creating figure
     fig1 = plt.figure(figsize=(8, 6))
@@ -1557,11 +1560,18 @@ def dataplotter_bar_plot_simple(
     # Removing y and x tick
     dataplotter_x_y_tick_remover(ax1)
 
+
+    # Plotting bars
     ax1.xaxis.set_ticklabels(
         list(np.ravel(df1[index].values)),rotation=rot)
+    ax1.set_yticks(list(y_ticks))
 
     if y_log:
         ax1.set_yscale("log")
+        ax1.yaxis.set_tick_params(which="minor", left="off")
+        y_ticks = np.ceil(np.logspace(0,max_tick,len(y_ticks)))
+        y_ticks = set(y_ticks)
+        ax1.yaxis.set_ticks(list(y_ticks))
 
     # Checking for "datalabels" option
     h, l = ax1.get_legend_handles_labels()
@@ -1587,7 +1597,6 @@ def dataplotter_bar_plot_simple(
     print "Don't for get to save figure!"
 
     return fig1, ax1
-
 
 
 def dataplotter_scatter_x_y_plot(
@@ -3215,7 +3224,8 @@ def dataplotter_kde_six_sigmas_cutoff(
             x=six_sigmas.Left.values[i], lw=2.5, ls="--", c=colors2[i])
         plt.axvline(
             x=six_sigmas.Right.values[i], ls="--",lw=2.5,
-            c=colors2[i], label=r"%s" % (mean_dict.get(i,str(i) + no_value)))
+            c=colors2[i], label=r"%s" % (mean_dict.get(
+                i,str(six_sigmas.Null_Sigmas.values[i]) + no_value)))
 
     # Adding figure text and saving!
     plt.xlim(xlimits)

@@ -3040,7 +3040,8 @@ def dataset_export_ORF_names_for_GO_Enrichment(
 
 
 def dataset_import_goterms(
-        delimiter="\t", go_filter=["P"], filepath="./sgd_go_slimterm.csv"):
+        delimiter="\t", go_filter=["P"], filepath="./sgd_go_slimterm.csv",
+    not_csv=False):
     """Import csv-file with GO slim terms and filters by GO aspects. The
     columns are renamed 'ORF' for systematic nomenclature loci used by SGD,
     'Gene' as the standard gene name, 'SGDID' for the unique identifier used by
@@ -3063,6 +3064,10 @@ def dataset_import_goterms(
     filepath : str(optional)
         A relative path to a csv-file containing GO-annotation from current
         working directory. The default value was set to './sgd_go_slimterm.csv'
+
+    not_csv : boolean(optional)
+        The parameter 'not_csv' used to import any type of text file
+        structure that is readable with pandas.read_table option.
 
     Returns
     -------
@@ -3099,6 +3104,9 @@ def dataset_import_goterms(
     please visit: http://downloads.yeastgenome.org/curation/literature/
 
     """
+    # Global local
+    t_none_formatted = []
+
     # Check for existence of file.
     try:
         assert(exists(filepath))
@@ -3109,8 +3117,13 @@ def dataset_import_goterms(
         print text
         return
 
-    # Importing file.
-    t_none_formatted = pd.read_csv(filepath, delimiter=delimiter, header=None)
+    if not_csv:
+        t_none_formatted = pd.read_table(
+            filepath, delimiter=delimiter, header=None)
+
+    else:
+        # Importing file.
+        t_none_formatted = pd.read_csv(filepath, delimiter=delimiter, header=None)
 
     # Clear all empty columns.
     t_format = t_none_formatted.copy()
