@@ -3414,6 +3414,159 @@ def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
     return df1, six_sigmas
 
 
+def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
+    """Takes the pandas data frame labelled 'six_sigmas' and returns
+    a 'limits_table' and concats a new multiple columns frame called '
+    orf_selection'. The selection of orfs is based on the 'limit_table'.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is pandas data frame with the wanted data.
+
+    six_sigmas : pandas.core.DataFrame(object)
+        The 'six_sigmas' is one of the return data frames from a function
+        called 'dataset_six_sigmas_cutoff'.
+
+    column : list(object)
+        The 'column' parameter is a list object. The 'column' accepts
+        only column labels that are present in 'df'. The labels inserted in
+        'columns' are used for the 'orf_selection'. If parameter
+        left empty a function call is performed.
+    index : list(object)
+        The parameter called 'index' is the given column labels from 'df'
+        e.g. plate nr, dates, systematic names etc. If 'index' is null or
+        empty a function call is performed.
+
+    Returns
+    -------
+
+    limit_table : pandas.core.frame.DataFrame(object)
+        The 'limit_table' is a restructured 'six_sigmas' data frame
+        with
+
+    """
+    # Global local
+    n_columns = ["Null_Sigmas", "Left", "Right"]
+    outcomes = [(0.0, -1.0), (1.0, -1.0), (1.0, 0.0), (-1.0, -1.0)]
+    retrived_values = []
+    limit_values = []
+    frame = []
+    names = []
+    left_vals = []
+    right_vals = []
+
+    # Copying frames
+    df1 = dataset_copy_frame(df)
+    cutoffs = dataset_copy_frame(six_sigmas)
+
+    # Checking inputs
+    try:
+        frame = cutoffs[n_columns]
+    except KeyError:
+        text = ("The 'six_sigmas' input had not the asserted column labels!"
+                " Please check columns 'six_sigmas' : {0} \n "
+                " Expected columns : {1} "
+                " ").format(cutoffs.columns.tolist(), n_columns)
+        raise KeyError(text)
+
+    if not(column and index):
+        column, index = dataset_pick_columns(df, split="groupby")
+
+    # Paring data together
+    for idx in range(len(n_columns)):
+        tmp = [
+            frame[n_columns[idx]][i:i+2].values for i in range(len(frame)+1)]
+        retrived_values.append(tmp)
+
+    for val in retrived_values:
+        tmp2 = [i for i in val if not len(i)%2 and len(i)>0]
+        limit_values.append(tmp2)
+
+    # Creating pandas data frame
+    limits_frame = pd.DataFrame(limit_values).T
+    limits_frame2 = [
+        limits_frame[i].apply(pd.Series) for i in range(
+            limits_frame.shape[1])]
+    limits_table = pd.concat(limits_frame2, axis=1)
+
+    # Creating names to limits_table
+    for i in range(len(n_columns)):
+        tmp3 = [n_columns[i]+"_Start", n_columns[i]+"_End"]
+        names.append(tmp3)
+    names = list(np.ravel(names))
+    limits_table.columns = names
+
+    # Creating flags for testing
+    limits_table["Left"] = zip(
+        np.sign(limits_table.Left_Start.values), np.sign(
+            limits_table.Left_End.values))
+
+    limits_table["Right"] = zip(
+        np.sign(limits_table.Right_Start.values), np.sign(
+            limits_table.Right_End.values))
+
+    # Creating flag for limits tests
+    test_flag = {i: "A" for i in outcomes}
+    null_outcome = {(0.0, 0.0): "C"}
+    test_flag.update(null_outcome)
+
+    limits_table["Left_limit_tests"] = [
+        test_flag.get(i, "B") for i in limits_table.Left.values]
+
+    limits_table["Right_limit_tests"] = [
+        test_flag.get(i, "B") for i in limits_table.Right.values]
+
+    # Getting creating sub frames
+    right, left = df1[index+column], df1[index+column]
+
+    right_labels = [i for i in limits_table.columns if "Right" in i ]
+    left_labels = [i for i in limits_table.columns if "Left" in i ]
+
+    # Creating orfs kept.
+    for i in range(len(limits_table)):
+        if limits_table[left_labels[-1]].values[i] == "A":
+            left["A_left_"+ str(i)] = (
+                (limits_table[
+                    left_labels[0]].values[i] >= left[column].values) & (
+                        left[column].values >= limits_table[
+                            left_labels[1]].values[i]))
+
+        elif limits_table[left_labels[-1]].values[i] == "C":
+            left["Intervall_Null"] = "A_left_" + str(i)
+
+        else:
+            left["B_left_"+ str(i)] = (
+                (limits_table[
+                    left_labels[0]].values[i] <= left[column].values) & (
+                        left[column].values <= limits_table[
+                            left_labels[1]].values[i]))
+
+    for i in range(len(limits_table)):
+        if limits_table[right_labels[-1]].values[i] == "A":
+            right['A_right_'+str(i)] = (
+                (limits_table[
+                    right_labels[0]].values[i] >= right[column].values) & (
+                        right[column].values >= limits_table[
+                            right_labels[1]].values[i]))
+
+        elif limits_table[right_labels[-1]].values[i] == "C":
+            right["Intervall_Null"] = "A_right_" + str(i)
+        else:
+            right['B_right_'+str(i)] = (
+                (limits_table[
+                    right_labels[0]].values[i] <= right[column].values) & (
+                        right[column].values <= limits_table[
+                            right_labels[1]].values[i]))
+    limits_table.Left_limit_tests = [
+        limits_table.Left_limit_tests[i] +"_left_"+ str(i) for i in range(
+            len(limits_table))]
+    limits_table.Right_limit_tests = [
+        limits_table.Right_limit_tests[i] +"_right_"+ str(i) for i in range(
+            len(limits_table))]
+    return limits_table, left, right
+
+
 def dataset_pairwise_distance_points(df_work, workcolumns):
     """ Takes data frame
     and calculates distances between points for data frame with length >= 5.
