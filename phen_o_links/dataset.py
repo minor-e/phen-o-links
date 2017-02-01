@@ -3416,8 +3416,7 @@ def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
 
 def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
     """Takes the pandas data frame labelled 'six_sigmas' and returns
-    a 'limits_table' and concats a new multiple columns frame called '
-    orf_selection'. The selection of orfs is based on the 'limit_table'.
+    a 'limits_table', 'left' and 'right'.
 
     Parameters
     ----------
@@ -3443,7 +3442,30 @@ def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
 
     limit_table : pandas.core.frame.DataFrame(object)
         The 'limit_table' is a restructured 'six_sigmas' data frame
-        with
+        with intervals.
+
+    left, right : pandas.core.frame.DataFrame(object)
+        The returns values that passes the 'left' and 'right' tails
+        cutoffs
+
+    Raises
+    ------
+    KeyError
+        If items are not found in 'six_sigmas'
+
+    See Also
+    --------
+    dataset_pick_columns : For more information about function call if
+                           'columns' or 'index' left empty.
+    Notes
+    -----
+    The 'limits_table' contains the column labels called 'Left_limit_test' and
+    'Right_limit_test'. Both of theses labels contains values with the 'A',
+    'B' and 'C' letters. The 'A' shows values that passes the following test
+    limit(A0)>= x >=limit(A0+n). The letter 'B' limit(A0)<= x <=limit(A0+n).
+    The '(A0)' is the start values and 'n' is the distance to next limit and
+    'x' is value 'column'. The test marked with 'C' are intervals , where
+    (A0) == (A0 +n).
 
     """
     # Global local
@@ -3453,8 +3475,9 @@ def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
     limit_values = []
     frame = []
     names = []
-    left_vals = []
-    right_vals = []
+    interval_vals = []
+    new_left_labels = []
+    new_right_labels = []
 
     # Copying frames
     df1 = dataset_copy_frame(df)
@@ -3564,7 +3587,68 @@ def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
     limits_table.Right_limit_tests = [
         limits_table.Right_limit_tests[i] +"_right_"+ str(i) for i in range(
             len(limits_table))]
+
+    # Renaming columns labels in left and right
+    new_left_labels = [i for i in left.columns if "A_" in i or "B_" in i]
+    new_right_labels = [i for i in right.columns if "A_" in i or "B_" in i]
+
+    # intervals
+    interval_vals = zip(
+        limits_table.Null_Sigmas_Start, limits_table.Null_Sigmas_End)
+
+    left_cols = {
+        new_left_labels[i]: interval_vals[i] for i in range(len(
+            new_left_labels))}
+
+    right_cols = {
+        new_right_labels[i]: interval_vals[i] for i in range(len(
+            new_right_labels))}
+
+    left = left.rename(columns=left_cols)
+    right = right.rename(columns=right_cols)
+
     return limits_table, left, right
+
+
+def dataset_linkage_error_correction(df, linkage_error):
+    """ Takes a any given pandas data frame and returns linkage error free
+    data frame.
+    """
+    # Global Local
+    linkage_columns = [
+        "Primary_DBID", "ORF_Systematic_Name", "Organism", "Gene",
+        "Standard_Names_Verbose", "Length"]
+    column = []
+
+    # Copying frame
+    df1 = dataset_copy_frame(df)
+    linkage = dataset_copy_frame(linkage_error)
+
+    if linkage.shape[1] == 6:
+        linkage.columns = linkage_columns
+    else:
+        text = ("Please format 'linkage_error' data frame with following "
+                "labels:\n {0}").format(linkage_columns)
+        raise ValueError(text)
+
+    if not(column):
+        column = [
+            df1.columns.tolist().index(i) for i in df1.columns
+            if "ORF" in i and len(i) == 3]
+
+    # Creating idx
+    orfs_filter = set(linkage.ORF_Systematic_Name.tolist())
+
+    df1["Linkage_Error_Filter"] = df1[df1.columns[column[0]]].isin(orfs_filter)
+
+    return df1
+
+
+
+
+
+
+
 
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
