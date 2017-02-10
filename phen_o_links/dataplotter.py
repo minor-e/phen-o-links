@@ -3307,6 +3307,7 @@ def dataplotter_go_enrichment_plot(df):
     df1 = ds.dataset_copy_frame(df)
 
     # Local globals
+    x_label = r"%s" %("Enrichment log$_{2}$")
     labels = ["Dataset_vs_Database", "Sub_vs_Database", "Sub_vs_Dataset"]
     names_switch =  {i: "Enrichment" for i in labels}
     go_terms = [i for i in df1.columns if "Slim" in i]
@@ -3364,6 +3365,7 @@ def dataplotter_go_enrichment_plot(df):
     for i in bars_prp[:len(nr_bars)]:
         i.set_edgecolor("black")
     fig1.subplots_adjust(left=0.48)
+    ax1.set_xlabel(x_label)
     plt.show()
 
     return fig1, ax1
