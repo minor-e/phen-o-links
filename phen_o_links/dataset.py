@@ -8,6 +8,7 @@
 import pandas as pd
 import numpy as np
 import re
+import fdr
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as distance
 from collections import defaultdict
@@ -15,6 +16,7 @@ from pprint import pprint
 from scipy.stats import ttest_ind
 from scipy.stats import linregress
 from scipy.stats import ttest_ind_from_stats
+from scipy.stats import hypergeom
 from os import listdir
 from os.path import abspath
 from os.path import exists
@@ -2958,6 +2960,7 @@ def dataset_on_identity_line(df, column=[], index=[], offset=0.05):
 
     return df1
 
+
 # Main worker functions
 
 def dataset_export_ORF_names_for_GO_Enrichment(
@@ -3611,8 +3614,33 @@ def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
 
 
 def dataset_linkage_error_correction(df, linkage_error):
-    """ Takes a any given pandas data frame and returns linkage error free
-    data frame.
+    """ Takes a any given pandas data frame and returns linkage error flag
+    for orfs present in 'df'.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The "df" parameter is a pandas data frame that contains a column
+        label named "ORF".
+
+    linkage_error : pandas.core.frame.DataFrame(object).
+        The "linkage_error" consist of 6 columns. The column label for index
+        nr 1 in 'linkage_error' data frame should contain the systematic ORFs
+        name .
+
+    Returns
+    -------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is the same input as the 'df' parameter at the start with the
+        addition of an extra column labelled 'Linkage_Error_Filter'. The new
+        label returns a boolean True for ORFs found both in 'df' and
+        'linkage_error'.
+
+    Raises
+    ------
+    ValueError
+        If 'linkage_error' input has 6 columns.
+
     """
     # Global Local
     linkage_columns = [
@@ -3642,13 +3670,6 @@ def dataset_linkage_error_correction(df, linkage_error):
     df1["Linkage_Error_Filter"] = df1[df1.columns[column[0]]].isin(orfs_filter)
 
     return df1
-
-
-
-
-
-
-
 
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
@@ -5037,6 +5058,263 @@ def dataset_calculate_p_value_from_stats(
         dataset_filesave(pvalues, filename='table_with_only_p_values')
 
     return merged_df2
+
+
+def dataset_go_enrichment_calc(df, subframe, go_table ):
+    """Takes 3 pandas data frame object and returns 2 data frame objects.
+    The returns values contains go enrichment data. Warning this
+    function takes some time to run!
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the input data frame that contains all ORFs in
+        the dataset.
+
+    subframe : pandas.core.frame.DataFrame(object)
+        The 'subframe' parameter is a subset from the 'df' frame e.g. all
+        ORF's that passes p-value threshold another type of cutoff.
+
+    go_table : pandas.core.frame.DataFrame(object)
+        The 'go_table' is specialized data frame that contains GO Slim Terms
+        and other information. See more information about 'go_table' layouts
+        in 'See Also' section.
+
+    Returns
+    -------
+    go_stats : pandas.core.frame.DataFrame(object)
+        The 'go_stats' general summary over hits and missed ORFs between
+        'df' and 'go_table' inputs.
+
+    go_enriched : list(object)
+        The 'go_enriched' is list object with length of 3. The items in the
+        list are pandas.core.frame.DataFrame(object). The index order in the
+        list corresponds to different types of comparisons. First index
+        is 'df' vs 'go_table' hits, second is 'subframe' vs 'go_table' hits
+        and lastly the third is 'subframe' vs 'df' hits. Hits are defined
+        if the ORF's is presents in pandas data frame.
+
+    Raises
+    ------
+    ValueError
+        If 'df', 'subframe', and/or 'go_table' lacks the columns label "ORF".
+
+    See Also
+    --------
+    dataset_import_goterms : For more information about 'go_table' formats.
+
+    """
+    # Local Globals
+    n_cols = ["Dataset", "Sub"]
+    df1 = dataset_copy_frame(df)
+    sub = dataset_copy_frame(subframe)
+    go_t = dataset_copy_frame(go_table)
+    dataframes = [df1, sub, go_t]
+    tmp = []
+    go_enriched = []
+
+    # Checking that inputs are correct
+    labels = [ i for i in dataframes if "ORF" in i.columns]
+
+    if not (len(labels) == 3):
+        text =("Column named 'ORF' is missing in 'df', 'sue' and or "
+               " 'go_table'")
+        raise ValueError(text)
+
+    if sub.ORF.shape[0] == 0:
+        text = ("Input 'sub' is empty therefore returns are "
+                "('None', 'None')")
+        go_stats = sub
+        go_enriched = sub
+        print text
+        return go_stats, go_enriched
+
+    # Creating Number of unique orfs
+    n_size = [float(i.ORF.unique().size) for i in dataframes]
+    ds_n, sub_n, db_n = n_size[0], n_size[1], n_size[2]
+
+    # Creating sub frame with go_terms only
+    labels2 = [
+        i for i in go_t.columns.tolist() if
+        "Slim" in  i or "GOID" in i or "ORF" in i]
+
+    go = go_t[labels2]
+
+
+    # Creating new columns in subframe
+    for names in n_cols:
+        go.loc[:, names] = 0
+    # Grouping label
+    gr_index = [i for i in labels2 if "Slim" in i]
+
+    # User friendly message
+    text_wr = ("Note that this may take while and you seem tired grab "
+               "a coffee or tea? Or perhaps take walk or start writing that"
+               "novel.")
+    print UserWarning(text_wr)
+
+    # n per GO Slim categories
+    for i in range(len(n_cols)):
+        for orf in dataframes[i].ORF.unique():
+            go.loc[go.ORF==orf,n_cols[i]] +=1
+    go_stats = go.groupby(gr_index).sum()
+    orf_db = go.groupby(gr_index).size()
+    go_stats["Database"] = orf_db
+
+    # Calculating Enrichment
+    go_stats["Dataset_vs_Database"] = np.log2(
+        go_stats.Dataset/ds_n) - np.log2(go_stats.Database/db_n)
+
+    go_stats["Sub_vs_Database"] = np.log2(
+        go_stats.Sub/sub_n) - np.log2(go_stats.Database/db_n)
+
+    go_stats["Sub_vs_Dataset"] = np.log2(
+        go_stats.Sub/sub_n) - np.log2(go_stats.Dataset/ds_n)
+
+    for i in go_stats.columns[-3:]:
+        tmp2 = go_stats.loc[go_stats[i]>0]
+        tmp.append(tmp2)
+
+    # Creating new frames
+    ds_vs_db, sub_vs_db, sub_vs_ds = tmp[0], tmp[1], tmp[2]
+
+    ds_vs_db.loc[:,"P_value"] = ds_vs_db.apply(
+        lambda val: hypergeom.pmf(val.Dataset, db_n, val.Database, ds_n),
+        axis=1)
+    sub_vs_db.loc[:,"P_value"] = sub_vs_db.apply(
+        lambda val: hypergeom.pmf(val.Sub, db_n, val.Database, sub_n), axis=1)
+    sub_vs_ds.loc[:,"P_value"] = sub_vs_ds.apply(
+        lambda val: hypergeom.pmf(val.Sub, db_n, val.Dataset, sub_n), axis=1)
+
+    # Deleting unwanted columns
+    ds_vs_db = ds_vs_db.drop(ds_vs_db.columns[-3:-1],axis=1)
+    sub_vs_db = sub_vs_db.drop(sub_vs_db.columns[[-4,-2,]], axis=1)
+    sub_vs_ds = sub_vs_ds.drop(sub_vs_ds.columns[[-4,-3,]], axis=1)
+
+    # Sort values by P
+    ds_vs_db = ds_vs_db.sort_values(by="P_value")
+    sub_vs_db = sub_vs_db.sort_values(by="P_value")
+    sub_vs_ds = sub_vs_ds.sort_values(by="P_value")
+
+    go_enriched = [ds_vs_db, sub_vs_db, sub_vs_ds]
+
+    return go_stats, go_enriched
+
+
+def dataset_go_enrichment(
+    tails, go_slims, alpha_error=0.1, flag="untitled", filepath="./"):
+    """ Takes pandas data frame and tail for a given dataset and returns
+    enrichments of go-tables. Data frame inputs must contain 'ORF' as a valid
+    column label. The function returns multiple '*.csv'-files.
+
+    Parameters
+    ----------
+    tails :  pandas.core.frame.DataFrame(object)
+        The 'tails' parameter is the return values from the function called
+        dataset_interval_from_sigmas_cutoff labelled as 'left' and 'right'.
+
+    go_slims : pandas.core.frame.DataFrame(object)
+        The 'go_slim' parameter is a specialized pandas data frame
+        that contains the relevant information to do a go enrichment analysis.
+        For more information of how to format data frame 'See Also' section
+        further down.
+
+    alpha_error : float(optional)
+        The 'alpha_error' is the tolerated type I error for calculated the
+        p-values. The 'alpha_error' is set to '0.1' for a one-tailed test.
+
+    flag : str(optional)
+        The 'flag' parameter is a string object. The 'flag' is additional
+        text entry for the '*csv' files names. The default values is
+        'untitled'.
+
+    filepath : str(optional)
+        The 'filepath' is the relative path from current working directory
+        to assigned location. The default value for 'filepath' is './'.
+
+    Returns
+    -------
+    files : csv
+        The function returns 4 different types of csv-files labelled for
+        the different types of comparisons made. Files labelled as 'go_stats'
+        is a summary table over hits and miss between data frames.
+        The files labelled as 'ds_vs_db' is the result between 'tails' against
+        database 'go_slims'. The csv-files labelled 'sub_vs_db' and 'sub_vs_ds'
+        is the subset from 'tails' based on the given cutoff intervals against
+        'go_slims' and against 'tails'.
+
+    Raises
+    ------
+    ValueError
+        If 'tails' or 'go_slims' lacks the column label named "ORF".
+
+    See Also
+    --------
+    dataset_go_enrichment_calc : For more information about how go-enrichment
+                                 is calculated.
+    dataset_import_goterms : For more information of about 'go_slims' input
+                             and how its formatted.
+
+    dataset_interval_from_sigmas_cutoff : For more information about 'tails'
+                                          input and its relation to the 'left'
+                                          and 'right' return.
+    Notes
+    -----
+    The that fdr.py file most be present imported properly for function to run.
+
+    """
+    # Local global
+    go_terms = dataset_copy_frame(go_slims)
+    tail =  dataset_copy_frame(tails)
+    names = []
+    names_formatted = {}
+    dsdb = "ds_vs_db_"
+    subdb = "sub_vs_db_"
+    subds = "sub_vs_ds_"
+    gs = "go_stats_"
+    subframes = []
+    stats_go = []
+    enrich_go =[]
+
+    # Getting column names from tails
+    names = [i for i in tail.columns if isinstance(i, tuple)]
+    names_formatted = {
+        i:"_"+str(int(i[0]))+"_"+str(int(i[1])) for i in names}
+
+    for label in names:
+        tmp_0 = tail[tail[label] ==True]
+        subframes.append(tmp_0)
+
+    for i in range(len(names)):
+        go, go_enrich = dataset_go_enrichment_calc(
+            tail,subframes[i], go_terms)
+        stats_go.append(go)
+        enrich_go.append(go_enrich)
+
+    for i in range(len(enrich_go)):
+        for y in range(len(enrich_go[i])):
+            # Check that input not 0
+            if enrich_go[i][y].shape[0] == 0:
+                text = ("Skipped column labelled {0} since "
+                        "values for column labels "
+                        " is empty").format(names[i])
+            p_vector = fdr.FDR(
+                enrich_go[i][y], field="P_value",alpha=alpha_error)
+            enrich_go[i][y] = enrich_go[i][y].apply(p_vector, axis=1)
+
+    for i in range(len(names)):
+        stat_name = gs + flag +"%s" %(names_formatted.get(names[i]))
+        var = dsdb + flag + "%s" %(names_formatted.get(names[i]))
+        var2 = subdb + flag + "%s" %(names_formatted.get(names[i]))
+        var3 = subds + flag + "%s" %(names_formatted.get(names[i]))
+        dataset_filesave(stats_go[i], filename=stat_name, pathdir=filepath)
+        dataset_filesave(
+                enrich_go[i][0], filename=var, pathdir=filepath)
+        dataset_filesave(
+            enrich_go[i][1], filename=var2, pathdir=filepath)
+        dataset_filesave(
+            enrich_go[i][2], filename=var3, pathdir=filepath)
+    return "Your files have been made"
 
 
 if __name__ == "__main__":
