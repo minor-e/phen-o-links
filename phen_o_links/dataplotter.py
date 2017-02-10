@@ -16,6 +16,10 @@ from matplotlib.colors import Normalize
 from os import listdir
 import dataset as ds
 
+# Globals
+# Dict object only used for go enrichment plots!
+go_colors = {}
+
 # Classes
 
 class MidpointNormalize(Normalize):
@@ -3239,6 +3243,135 @@ def dataplotter_kde_six_sigmas_cutoff(
     plt.clf()
     plt.close("all")
     return "Figure with sigmas cut offs is done"
+
+
+def dataplotter_go_colors(go_table):
+    """ Takes a single data frame with and returns a dict with colors.
+    """
+    # Copying frame
+    go_t = ds.dataset_copy_frame(go_table)
+    # Global variable
+    global go_colors
+    # Local Globals
+    sorted_by_names = []
+    rm_color = ["white"]
+    rm_color2 = ["ivory", "aliceblue", "mintcream", "azure", "snow", "w"]
+
+    # Adding creating colors
+    all_colors = dict(mpl.colors.BASE_COLORS, **mpl.colors.CSS4_COLORS)
+
+    # Sorting colors by hue, saturation, value and as well as the name
+    by_hsv = sorted((
+        tuple(mpl.colors.rgb_to_hsv(mpl.colors.to_rgba(color)[:3])), name)
+        for name, color in all_colors.items())
+
+
+    # Get the sorted color names.
+    picked_colors = [name for hsv, name in by_hsv]
+
+    print ("Number of colors before filtering"
+           " out unwanted: {0}").format(len(picked_colors))
+
+    # Pick out colors that have word white.
+    rm_white = [i for i in picked_colors if rm_color[0] in i]
+
+    # Adding unwanted colors together
+    rm_colors = rm_white + rm_color2
+
+    # Removing unwanted colors from main colors
+    [picked_colors.pop(picked_colors.index(i)) for i in rm_colors]
+
+    print ("Number of colors left after filtering "
+           "colors {0}").format(len(picked_colors))
+
+    # Redistributing colorscheme
+    np.random.shuffle(picked_colors)
+
+    # All unique go terms found in 'go_table'
+    go_terms = go_t.GO_Slim_Term.unique().tolist()
+
+    go_terms.sort()
+
+    go_colors = {go_terms[i]: picked_colors[i] for i in range(len(go_terms))}
+    return go_colors
+
+
+def dataplotter_go_enrichment_plot(df):
+    """Takes the return files from phen_o_links.dataset_go_enrichment and
+    returns a horizontal bar plot.
+    """
+    # Global variable
+    global go_colors
+
+    # Copying frame
+    df1 = ds.dataset_copy_frame(df)
+
+    # Local globals
+    labels = ["Dataset_vs_Database", "Sub_vs_Database", "Sub_vs_Dataset"]
+    names_switch =  {i: "Enrichment" for i in labels}
+    go_terms = [i for i in df1.columns if "Slim" in i]
+    df1 = df1.rename(columns={i:names_switch.get(i,i) for i in df1.columns})
+    org_columns = df1.columns.tolist()
+
+    # Making sure that user has colors input.
+    if not go_colors:
+        text =("Please run function called dataplotter_go_colors"
+               " before plotting go slim enrichments!")
+        raise ValueError(text)
+
+    # Creating colors for all bars
+    bar_colors = [go_colors.get(i) for i in df1[go_terms[0]].tolist()]
+
+    # text fixing formatting latex rendering
+    columns_rm_underscore = dataplotter_textspacemanger(
+        org_columns, pattern="_", output=" ")
+
+    columns = dataplotter_textspacemanger(columns_rm_underscore)
+
+    # Changing column names!
+    df1.columns = columns
+
+    # Indexing df1 frame
+    df1 = df1.set_index([i for i in df1.columns if "Slim" in i])
+
+    # Making it GO terms latex formatted
+    index_names = df1.index.tolist()
+    index2 = dataplotter_textspacemanger(index_names)
+
+    index_dict = {
+        index_names[i]:r"%s" %(index2[i]) for i in range(len(index_names))}
+    df1 = df1.rename(index=index_dict)
+
+    # Creating canvas and axes
+    fig1 = plt.figure(figsize=(8,6))
+    ax1 = fig1.add_subplot(111)
+
+    # Plotting horizontal bar plots
+
+    df1[df1.loc[:, "FDR"] == True].Enrichment.plot(
+        kind="barh", ax=ax1, color=bar_colors)
+
+    # Removing spines
+    dataplotter_spines_remover(
+        ax1, left=True, bottom=True, right=False, top=False, all_axis=False)
+
+    # Fixing edge colors
+    prp_axis = ax1.properties()
+
+    nr_bars = [i for i in  range(len(ax1.yaxis.get_majorticklabels()))]
+    bars_prp = prp_axis.get("children")
+
+    for i in bars_prp[:len(nr_bars)]:
+        i.set_edgecolor("black")
+    fig1.subplots_adjust(left=0.48)
+    plt.show()
+
+    return fig1, ax1
+
+
+
+
+
 
 
 if __name__ == "__main__":
