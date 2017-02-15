@@ -3246,7 +3246,22 @@ def dataplotter_kde_six_sigmas_cutoff(
 
 
 def dataplotter_go_colors(go_table):
-    """ Takes a single data frame with and returns a dict with colors.
+    """ Takes a single data frame with and returns a dict with colors
+    for found GO Slim Terms.
+
+    go_table : pandas.core.frame.DataFrame(object)
+        The parameter called 'go_table' must contain a column labelled
+        'GO_Slim_Term'.
+
+    Returns
+    -------
+    go_colors : dict(object)
+        The 'go_colors' is dictionary where the keys are the GO slim terms
+        and the value is a color. The 'go_colors' is global variable.
+
+    See Also
+    --------
+    dataplotter_go_enrichment_plot : For the usage of 'go_colors'.
     """
     # Copying frame
     go_t = ds.dataset_copy_frame(go_table)
@@ -3264,7 +3279,6 @@ def dataplotter_go_colors(go_table):
     by_hsv = sorted((
         tuple(mpl.colors.rgb_to_hsv(mpl.colors.to_rgba(color)[:3])), name)
         for name, color in all_colors.items())
-
 
     # Get the sorted color names.
     picked_colors = [name for hsv, name in by_hsv]
@@ -3296,9 +3310,47 @@ def dataplotter_go_colors(go_table):
     return go_colors
 
 
-def dataplotter_go_enrichment_plot(df):
+def dataplotter_go_enrichment_plot(
+    df, figtitle=["Untitled"], filename="untitled", path_to_save="./"):
     """Takes the return files from phen_o_links.dataset_go_enrichment and
-    returns a horizontal bar plot.
+    returns a horizontal bar plot for GO slim terms that passed FDR.
+    The bar plot is saved as an svg image.
+
+    df : pandas.core.frame.DataFrame(object)
+        The parameter called 'df' is a imported '.csv'-file created from
+        'phen_o_links'.dataset_go_enrichment return.
+
+    figtitle : list(optional)
+        The parameter called 'figtitle' is list object with a length of 1.
+        The parameter accepts strings.
+
+    filename : str(optional)
+        The 'filename' is the name of saved svg file created by function.
+        The default value of 'filename' is set to 'untitled'.
+
+    path_to_save : str(optional)
+        The 'path_to_save' is the relative of absolute path from current
+        working directory. The 'path_to_save' default value is './'.
+
+    Returns
+    fig1, ax1 : matplotlib.pyplot(objects)
+        The 'fig1' return is the figure object of the plot and the 'ax1' is
+        the axes object of the figure.
+
+    Raises
+    ------
+    ValueError
+        If global variable called 'go_colors' is empty.
+
+    See Also
+    --------
+    dataplotter_go_colors : For more information about 'go_colors' empty.
+    dataplotter_save_figure : For other saving option of 'fig1' and 'ax1'
+                              returns.
+    phen_o_links.dataset_go_enrichment : For more information about 'df' input.
+
+
+
     """
     # Global variable
     global go_colors
@@ -3313,6 +3365,10 @@ def dataplotter_go_enrichment_plot(df):
     go_terms = [i for i in df1.columns if "Slim" in i]
     df1 = df1.rename(columns={i:names_switch.get(i,i) for i in df1.columns})
     org_columns = df1.columns.tolist()
+    interval = df1.Interval.unique().astype(list)[0]
+    title_suffix = r"\newline for sigma$_{\emptyset}$ interval$_{%s}$." %(interval)
+    figtitle2 = dataplotter_textspacemanger(figtitle)
+    file_to_save = path_to_save + filename + ".svg"
 
     # Making sure that user has colors input.
     if not go_colors:
@@ -3337,7 +3393,9 @@ def dataplotter_go_enrichment_plot(df):
 
     # Making it GO terms latex formatted
     index_names = df1.index.tolist()
-    index2 = dataplotter_textspacemanger(index_names)
+    index_names2 = dataplotter_textspacemanger(
+        index_names, pattern="_", output=" ")
+    index2 = dataplotter_textspacemanger(index_names2)
 
     index_dict = {
         index_names[i]:r"%s" %(index2[i]) for i in range(len(index_names))}
@@ -3365,8 +3423,13 @@ def dataplotter_go_enrichment_plot(df):
     for i in bars_prp[:len(nr_bars)]:
         i.set_edgecolor("black")
     fig1.subplots_adjust(left=0.48)
+
+    # Setting text
     ax1.set_xlabel(x_label)
-    plt.show()
+    fig1.suptitle(r"%s" %(figtitle2[0]+title_suffix))
+
+    # Saving figure
+    plt.savefig(file_to_save, format="svg")
 
     return fig1, ax1
 

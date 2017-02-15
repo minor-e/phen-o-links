@@ -3175,7 +3175,7 @@ def dataset_import_goterms(
     if not go_filter or len(go_filter) > 2:
         return t_named
     if len(go_filter) == 1:
-        t_GO = t_named[t_named['GO_Aspect'] == go_filter[0]]
+        t_GO = t_named.loc[t_named['GO_Aspect'] == go_filter[0]]
 
         # Return data frame with filtered GO slim terms.
         return t_GO
@@ -5109,6 +5109,7 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
     df1 = dataset_copy_frame(df)
     sub = dataset_copy_frame(subframe)
     go_t = dataset_copy_frame(go_table)
+    dataframes = []
     dataframes = [df1, sub, go_t]
     tmp = []
     go_enriched = []
@@ -5124,22 +5125,29 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
     if sub.ORF.shape[0] == 0:
         text = ("Input 'sub' is empty therefore returns are "
                 "('None', 'None')")
+        sub.insert(sub.shape[1], "Interval", (0,0))
+        sub = sub.fillna(0)
         go_stats = sub
-        go_enriched = sub
+        sub.loc[:, "FDR"] = False
+        sub.loc[:, "P_value"] = 1.0
+        go_enriched = [sub, sub, sub]
         print text
         return go_stats, go_enriched
 
     # Creating Number of unique orfs
-    n_size = [float(i.ORF.unique().size) for i in dataframes]
+    n_size = [
+        float(dataframes[i].ORF.unique().size) for i in range(len(dataframes))]
     ds_n, sub_n, db_n = n_size[0], n_size[1], n_size[2]
+    print "Number of orfs in dataset" ,ds_n
+    print "Number of orfs in sub" ,sub_n
+    print "Number of orfs in database" ,db_n
 
     # Creating sub frame with go_terms only
     labels2 = [
         i for i in go_t.columns.tolist() if
         "Slim" in  i or "GOID" in i or "ORF" in i]
 
-    go = go_t[labels2]
-
+    go = go_t.loc[:, labels2]
 
     # Creating new columns in subframe
     for names in n_cols:
@@ -5149,7 +5157,7 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
 
     # User friendly message
     text_wr = ("Note that this may take while and you seem tired grab "
-               "a coffee or tea? Or perhaps take walk or start writing that"
+               "a coffee or tea? Or perhaps take walk or start writing that "
                "novel.")
     print UserWarning(text_wr)
 
@@ -5159,20 +5167,21 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
             go.loc[go.ORF==orf,n_cols[i]] +=1
     go_stats = go.groupby(gr_index).sum()
     orf_db = go.groupby(gr_index).size()
-    go_stats["Database"] = orf_db
+    go_stats.loc[:,"Database"] = orf_db
 
     # Calculating Enrichment
-    go_stats["Dataset_vs_Database"] = np.log2(
+    go_stats.loc[:,"Dataset_vs_Database"] = np.log2(
         go_stats.Dataset/ds_n) - np.log2(go_stats.Database/db_n)
 
-    go_stats["Sub_vs_Database"] = np.log2(
+    go_stats.loc[:,"Sub_vs_Database"] = np.log2(
         go_stats.Sub/sub_n) - np.log2(go_stats.Database/db_n)
 
-    go_stats["Sub_vs_Dataset"] = np.log2(
+    go_stats.loc[:,"Sub_vs_Dataset"] = np.log2(
         go_stats.Sub/sub_n) - np.log2(go_stats.Dataset/ds_n)
 
     for i in go_stats.columns[-3:]:
         tmp2 = go_stats.loc[go_stats[i]>0]
+        print tmp2
         tmp.append(tmp2)
 
     # Creating new frames
@@ -5195,6 +5204,10 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
     ds_vs_db = ds_vs_db.sort_values(by="P_value")
     sub_vs_db = sub_vs_db.sort_values(by="P_value")
     sub_vs_ds = sub_vs_ds.sort_values(by="P_value")
+
+    # Adding sub unique ORFs found in sub
+    sub_vs_db.loc[:, "n_sub"] = sub_n
+    sub_vs_ds.loc[:, "n_sub"] = sub_n
 
     go_enriched = [ds_vs_db, sub_vs_db, sub_vs_ds]
 
@@ -5282,12 +5295,17 @@ def dataset_go_enrichment(
         i:"_"+str(int(i[0]))+"_"+str(int(i[1])) for i in names}
 
     for label in names:
-        tmp_0 = tail[tail[label] ==True]
+        tmp_0 = tail.loc[tail[label] ==True]
         subframes.append(tmp_0)
 
     for i in range(len(names)):
         go, go_enrich = dataset_go_enrichment_calc(
             tail,subframes[i], go_terms)
+        # Adding interval column
+        go.loc[:,"Interval"] = str(names[i])
+        go_enrich[0].loc[:,"Interval"] = str(names[i])
+        go_enrich[1].loc[:,"Interval"] = str(names[i])
+        go_enrich[2].loc[:,"Interval"] = str(names[i])
         stats_go.append(go)
         enrich_go.append(go_enrich)
 
@@ -5297,7 +5315,7 @@ def dataset_go_enrichment(
             if enrich_go[i][y].shape[0] == 0:
                 text = ("Skipped column labelled {0} since "
                         "values for column labels "
-                        " is empty").format(names[i])
+                        "is empty").format(names[i])
             p_vector = fdr.FDR(
                 enrich_go[i][y], field="P_value",alpha=alpha_error)
             enrich_go[i][y] = enrich_go[i][y].apply(p_vector, axis=1)
