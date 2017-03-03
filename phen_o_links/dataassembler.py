@@ -84,8 +84,8 @@ def data_assembler_II_multiple_files_import_CSV_format(
     """Constructs a file containing multiple csv files. Users should gather all
     wanted files in one  directory and navigate to that directory. Files should
     be numerated in ascending order to work correctly. However if user has
-    labelled files as following with 'words' +'_'+ 'plate order'. The function
-    will be able to sort the files correctly.
+    labelled files as following with 'words' +'_'+ 'plate order'+'_'.
+    The function will be able to sort the files correctly.
 
     Parameters
     ----------
@@ -99,7 +99,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
 
     flag : boolean(optional)
          The 'flag' operator is only viable if the file structure follows the
-         pattern 'word'+'_'+'plate order'.
+         pattern 'word'+'_'+'plate order'+'_'.
 
     clear_by : str(optional)
         The parameter called 'clear_by' takes one column header and removes
@@ -117,6 +117,12 @@ def data_assembler_II_multiple_files_import_CSV_format(
 
     ValueError
         If 'clear_by' value is not found in columns labels.
+
+    Notes
+    -----
+        The flag option is only viable if dates in file names are put after
+        plate order. Since the regular expression given can't distinguish
+        pattern date pattern in file name.
     """
 
     # Locale global
@@ -138,10 +144,11 @@ def data_assembler_II_multiple_files_import_CSV_format(
     if flag:
         tmp = []
         for i in files_suffix_with_nr:
-            tmp.append(re.findall("([^a-z].*?\d?\B)", i))
+            tmp.append(re.findall("(\B[^a-z]\S?\d\S\B)", i))
+        print tmp
 
         # Getting 1st item in tmp
-        order_files = [int(tmp[i][0]) for i in range(len(tmp))]
+        order_files = [int(tmp[i][0].replace("_","")) for i in range(len(tmp))]
 
         # zipping objects
         new_order = zip(order_files, files_suffix_with_nr)

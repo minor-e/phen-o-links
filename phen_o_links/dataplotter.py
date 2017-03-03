@@ -3316,6 +3316,9 @@ def dataplotter_go_enrichment_plot(
     returns a horizontal bar plot for GO slim terms that passed FDR.
     The bar plot is saved as an svg image.
 
+    Parameters
+    ----------
+
     df : pandas.core.frame.DataFrame(object)
         The parameter called 'df' is a imported '.csv'-file created from
         'phen_o_links'.dataset_go_enrichment return.
@@ -3348,8 +3351,6 @@ def dataplotter_go_enrichment_plot(
     dataplotter_save_figure : For other saving option of 'fig1' and 'ax1'
                               returns.
     phen_o_links.dataset_go_enrichment : For more information about 'df' input.
-
-
 
     """
     # Global variable
@@ -3432,10 +3433,6 @@ def dataplotter_go_enrichment_plot(
     plt.savefig(file_to_save, format="svg")
 
     return fig1, ax1
-
-
-
-
 
 
 

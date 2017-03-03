@@ -3282,7 +3282,7 @@ def dataset_mu_and_sigma_test(df, n=None, columns=[]):
 
 
 def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
-    """ The takes any given 'df' and calculates six sigmas cutoffs from a given
+    """The takes any given 'df' and calculates six sigmas cutoffs from a given
     null model against observed data. The function assumes that variation found
     in null model is equal to observed data and that observed data is normally
     distributed.
@@ -3293,9 +3293,9 @@ def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
         The 'df' is pandas data frame that contains observed data and null
         hypothesis data.
 
-    n : int, float(optional)
+    n : float(optional)
         The 'n' is an optional parameter that is multiplied with standard
-        deviation of the "null_column" to get cutoffs. If 'n' parameters is
+        deviation of the 'null_column' to get cutoffs. If 'n' parameters is
         a extra column is added to 'df'.
 
     obs_column : list(object)
@@ -3309,21 +3309,19 @@ def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
 
     Returns
     -------
-    df : pandas.core.frame.DataFrame(object)
-        The 'df' contains 6 or 7 new columns that has been tested for window
-        6 sigmas from null hypothesis and/or a custom 'n' factor.
-        The columns are labeled as' null_std_x_' followed by multiplied
-        integers.
+    df1 : pandas.core.frame.DataFrame(object)
+        The 'df1' contains 6 or 7 new columns that has been tested for window
+        6 sigmas from null hypothesis.
 
     six_sigmas : pandas.core.frame.DataFrame(object)
         The is the standard deviation from null used in test for cutoffs.
-
 
     Raises
     ------
     ValueError
         If parameters 'obs_column' or 'null_column' are left empty,
         length greater than one and column label is not found.
+
     """
     # Locale Global
     l3 = []
@@ -3462,13 +3460,13 @@ def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
                            'columns' or 'index' left empty.
     Notes
     -----
-    The 'limits_table' contains the column labels called 'Left_limit_test' and
-    'Right_limit_test'. Both of theses labels contains values with the 'A',
-    'B' and 'C' letters. The 'A' shows values that passes the following test
-    limit(A0)>= x >=limit(A0+n). The letter 'B' limit(A0)<= x <=limit(A0+n).
-    The '(A0)' is the start values and 'n' is the distance to next limit and
-    'x' is value 'column'. The test marked with 'C' are intervals , where
-    (A0) == (A0 +n).
+        The 'limits_table' contains the column labels called 'Left_limit_test'
+        and'Right_limit_test'. Both of theses labels contains values with the
+        'A','B' and 'C' letters. The 'A' shows values that passes the following
+        test limit(A0)>= x >=limit(A0+n). The letter 'B' limit(A0)<= x
+        <=limit(A0+n). The '(A0)' is the start values and 'n' is the distance
+        to next limit and 'x' is value 'column'. The test marked with 'C' are
+        intervals , where (A0) == (A0 +n).
 
     """
     # Global local
@@ -5216,9 +5214,9 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
 
 def dataset_go_enrichment(
     tails, go_slims, alpha_error=0.1, flag="untitled", filepath="./"):
-    """ Takes pandas data frame and tail for a given dataset and returns
-    enrichments of go-tables. Data frame inputs must contain 'ORF' as a valid
-    column label. The function returns multiple '*.csv'-files.
+    """Takes pandas data frame and tail for a given dataset and returns
+    enrichments of go-tables. Data frame inputs must contain ORF as a valid
+    column label. The function returns multiple csv-files.
 
     Parameters
     ----------
@@ -5238,7 +5236,7 @@ def dataset_go_enrichment(
 
     flag : str(optional)
         The 'flag' parameter is a string object. The 'flag' is additional
-        text entry for the '*csv' files names. The default values is
+        text entry for the 'csv' files names. The default values is
         'untitled'.
 
     filepath : str(optional)
@@ -5259,7 +5257,7 @@ def dataset_go_enrichment(
     Raises
     ------
     ValueError
-        If 'tails' or 'go_slims' lacks the column label named "ORF".
+        If 'tails' or 'go_slims' lacks the column label named 'ORF'.
 
     See Also
     --------
@@ -5273,7 +5271,8 @@ def dataset_go_enrichment(
                                           and 'right' return.
     Notes
     -----
-    The that fdr.py file most be present imported properly for function to run.
+        The that fdr.py file most be present imported properly for function
+        to run.
 
     """
     # Local global
