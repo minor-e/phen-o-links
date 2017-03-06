@@ -12,8 +12,6 @@ import numpy as np
 import dataset as ds
 
 # Archaic functions
-
-
 def data_assembler_csv():
     """This is a data frame assembler. Takes multiples tab delimited csv files
     and builds one csv file containing all data within a directory. This
@@ -107,8 +105,12 @@ def data_assembler_II_multiple_files_import_CSV_format(
 
     Returns
     -------
-    new_data_frame : pandas.core.frame.DataFrame(object)
+    new_frame : pandas.core.frame.DataFrame(object)
         The newly assembled csv.
+
+    assemble_order : pandas.core.frame.DataFrame(object)
+        The order of how the csv's other text files was concatenated. From 0
+        to the last file.
 
     Raises
     ------
@@ -130,6 +132,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
     files_suffix = []
     new_order = []
     index_nr = []
+    assemble_order=dict()
 
     # File selection
     path = os.getcwd()
@@ -145,7 +148,6 @@ def data_assembler_II_multiple_files_import_CSV_format(
         tmp = []
         for i in files_suffix_with_nr:
             tmp.append(re.findall("(\B[^a-z]\S?\d\S\B)", i))
-        print tmp
 
         # Getting 1st item in tmp
         order_files = [int(tmp[i][0].replace("_","")) for i in range(len(tmp))]
@@ -171,7 +173,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
         files_suffix = files_suffix_with_nr
         index_nr = 'N'
 
-    # Adding t names to filenames
+    # Adding flag to files present in path
     if not files_suffix_with_nr or index_nr.lower() == 'y':
         n = 0
         if flag:
@@ -188,6 +190,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
         print "\n File concatenated as {0} : {1} \n".format(
             (filenames + 1), files_suffix[filenames])
         print filenames
+        assemble_order.update({filenames:files_suffix[filenames]})
         plate_nr = filenames + 1
         temp_file = pd.read_csv(files_suffix[filenames], delimiter=sep)
         temp_file['Plate_Nr'] = plate_nr
@@ -215,12 +218,19 @@ def data_assembler_II_multiple_files_import_CSV_format(
             new_frame = new_frame[new_frame["NotEmpty"] == True]
             del new_frame["NotEmpty"]
 
+    # Creating pandas series with the file(s) order
+    csv_order = pd.Series(assemble_order, index=assemble_order.keys())
+    csv_order = csv_order.reset_index()
+    csv_order.columns = ["Input_order_of_csv","Filename"]
+
     # Export new csv file with data sets
     new_frame.to_csv('./newfile_changeme.csv', sep=sep, index=False,
                      na_rep=np.nan)
+    csv_order.to_csv('assemble_order_of_csv_files.csv',sep=sep, index=False)
 
     # Shows result and reminds user to change name of file
-    print "\nDon't forget to change the name of newfile_changeme.csv"
+    print ("\nDon't forget to change the name of newfile_changeme.csv "
+           "and assemble_order_of_csv_files")
 
     return new_frame
 
@@ -982,6 +992,7 @@ def data_assembler_import_interaction_db(
     else:
         interaction_db = interaction_db[interaction_db[4] == filter_type]
         return interaction_db
+
 
 if __name__ == "__main__":
     # Execute only as script
