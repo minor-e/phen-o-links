@@ -16,6 +16,10 @@ from matplotlib.colors import Normalize
 from os import listdir
 import dataset as ds
 
+# Globals
+# Dict object only used for go enrichment plots!
+go_colors = {}
+
 # Classes
 
 class MidpointNormalize(Normalize):
@@ -890,6 +894,7 @@ def dataplotter_fixing_textformat():
                                       r'\usepackage{amsmath}']}
 
     plt.rcParams.update(params)
+    return "Text input has been formatted in params"
 
 
 def dataplotter_textspacemanger(text_list, pattern=' ', output="\ "):
@@ -1469,6 +1474,131 @@ def dataplotter_barplot(
     plt.ylabel(figure_text[1])
     plt.xlabel(figure_text[2])
     plt.show()
+
+    return fig1, ax1
+
+
+def dataplotter_bar_plot_simple(
+    df, columns=[], index=[], figlabels=["Title", "X axis", "Y axis"],
+    datalabels=[],y_log=False, rot=90.0):
+    """ Take a given pandas data frame and returns a simple bar plot.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is a pandas data frame with the data.
+
+    columns, index : list(optional)
+        The parameters called 'columns' and 'index' are the column labels
+        present in 'df'. The 'columns' is the individual bars plotted
+        and the 'index' is the x-axis labels under each bar. If parameters
+        are left empty, function call is triggered.
+
+    figlabels : list(optional)
+        The 'figlabels' is list object with the length of 3, which renders the
+        figure text. The order of nth- items in 'figlabels' corresponds to
+        different properties of text. The first item is figure title, seconds
+        item is the x-axis label and the last item is the y-axis label.
+
+    datalabels : list(optinal)
+        The 'datalabels' is an optional list. The items in "datalables" is the
+        legend text of the figure. The items corresponds to the order columns.
+
+    rot : float(optional)
+        The 'rot' rotates the x-axis major tick labels a certain degrees.
+
+    Returns
+    -------
+    fig1 : matplotlib.figure.Figure(object)
+        The 'fig1' is the figure plotted.
+
+    ax1 : matplotlib.axes._subplots.AxesSubplot(object)
+        The 'ax1' is the axes of the figure object.
+
+    Raises
+    ------
+        None error have been accounted for!
+
+    See Also
+    --------
+    dataplotter_save_figure : "fig1" return is used for save.
+
+    dataplotter_x_y_tick_remover : For information about tick remover
+
+    dataplotter_fixing_textformat : For more information about text rendering
+
+    phen_o_links.dataset.dataset_copy_frame : For more information about
+                                              data frame copy.
+
+    phen_o_links.dataset.dataset_pick_columns : For more information about
+                                                function call if 'columns'
+                                                or 'index' is left empty.
+    """
+
+    # Copying main data
+    rot = float(rot)
+    df1 = ds.dataset_copy_frame(df)
+
+    # Fixes removes under score from column label(s).
+    df1.columns = [i.replace("_", " ") for i in df1.columns.tolist()]
+
+    # Check that inputs are correct
+    if not(columns and index):
+        columns, index = ds.dataset_pick_columns(df1, split="groupby")
+
+    # Converting to latex styled text
+    dataplotter_fixing_textformat()
+    figure_text = dataplotter_textspacemanger(figlabels)
+
+    # Making y-ticks
+    max_tick = np.ceil(np.log10(df1.max().max()))
+    y_ticks = np.arange(0, max_tick*10**(max_tick-1)+1,100)[::2]
+
+    # Creating figure
+    fig1 = plt.figure(figsize=(8, 6))
+    ax1 = fig1.add_subplot(1,1,1)
+
+    # Plotting things
+    df1[columns].plot(kind="bar", ax=ax1)
+
+    # Removing y and x tick
+    dataplotter_x_y_tick_remover(ax1)
+
+
+    # Plotting bars
+    ax1.xaxis.set_ticklabels(
+        list(np.ravel(df1[index].values)),rotation=rot)
+    ax1.set_yticks(list(y_ticks))
+
+    if y_log:
+        ax1.set_yscale("log")
+        ax1.yaxis.set_tick_params(which="minor", left="off")
+        y_ticks = np.ceil(np.logspace(0,max_tick,len(y_ticks)))
+        y_ticks = set(y_ticks)
+        ax1.yaxis.set_ticks(list(y_ticks))
+
+    # Checking for "datalabels" option
+    h, l = ax1.get_legend_handles_labels()
+
+    if datalabels:
+        datalabels= dataplotter_textspacemanger(
+            datalabels, pattern="_", output=" ")
+        datalabels = dataplotter_textspacemanger(datalabels)
+        if not(len(l) == len(datalabels)):
+            text=("Legend labels are not changed!")
+            print text
+            datalabels = l
+        l = datalabels
+
+    # Adding text to figure
+    ax1.legend(h,l, frameon=False)
+
+    plt.title(r"%s" % (figure_text[0]))
+    plt.ylabel(r"%s" % (figure_text[2]))
+    plt.xlabel(r"%s" % (figure_text[1]))
+
+    plt.show()
+    print "Don't for get to save figure!"
 
     return fig1, ax1
 
@@ -2975,6 +3105,335 @@ def dataplotter_kde_plot(
         plt.tick_params(axis="y", which="both", right="off")
         plt.savefig(filename+str(i-1)+"_"+str(i+1)+".svg",format="svg")
         plt.clf()
+    return "Figures are done"
+
+
+def dataplotter_kde_six_sigmas_cutoff(
+    df, six_sigmas, obs_column=[""], filename="untitled",
+    figlabels=["Untitle", "X axis", "Y axis"], datalabel=["Data Observed"],
+    xlimits=(-1,1)):
+    """
+    The function renders kernel density plot over observed data with sigmas
+    cutoffs from a given null hypothesis. The null hypothesis are labelled with
+    subscript empty set symbol(see google search latex emptyset).
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The "df" parameter is a pandas data frame that contain the label
+        with the observed data.
+
+    six_sigmas : pandas.core.frame.DataFrame(object)
+        The 'six_sigmas' is a pandas data frame returned from function call
+        ds.dataset_six_sigmas_cutoff. The frame contains the sigmas values
+        produced in figure.
+
+    obs_column : list(object)
+        The "obs_column" contains the column label of the observed data.
+        The obs_column accepts only strings as item and has length of 1.
+
+    filename : str(optional)
+        The 'filename' parameter is the relative path from current working
+        directory. The parameter both points to location of saving file and
+        it's the name of the file.
+
+    figlabels, datalabel : list(optinal)
+        The 'figlabels' and 'datalabel' are the figure annotation text.
+        Both parameters are accepts only strings as input. The input order for
+        'figlabels' matters! Frist item is figure title, second item is x-axis
+        label and last entry is y axis label. The parameter 'datalabel' is the
+        label used for 'observed data' in figure.
+
+    xlimits : tuple(object)
+        The parameters 'xlimits' is tuple object, which determines the x-axis
+        range of the figure.
+
+    Returns
+    svg : file
+        The function returns a svg file in the end.
+
+    Raises
+    ------
+    ValueError
+        If 'filename' and 'obs_column' are not string typed.
+        If 'obs_column' is not found or length is not equal to one.
+        If 'obs_column' label and 'six_sigma' label is not present as a column
+        label.
+
+    See Also
+    --------
+    phen_o_links.dataset_six_sigmas_cutoff : For more information about
+                                             'six_sigmas' data frame.
+
+    """
+    # Local Global
+    datatext = []
+    figtext = []
+    colors = ['green', 'red', 'yellow', 'colorblind']
+    shades = ['light', 'darklight', 'dark', 'lightdark']
+    mean_dict = {0:r"Mean$_{\emptyset}$"}
+    no_value = r" x sigmas$_{\emptyset}$"
+    colors2 = []
+
+    # Copy frame
+    df1 = ds.dataset_copy_frame(df)
+
+    # Checking input
+    if not(isinstance(filename,str)):
+        text = ("{0} not a string typed").format(filename)
+        raise ValueError(text)
+    if not (len(obs_column)==1 and isinstance(obs_column[0],str)):
+        text = ("{0} not a string typed or length is not").format(obs_column)
+        raise ValueError(text)
+
+    # Checking column labels
+    c1 = obs_column[0] in df1.columns
+    c2 = "Null_mean" in six_sigmas.columns
+
+    if not(c1 and c2):
+        text = ("Label input in 'obs_column' found: {0}"
+                "\nLabel input in 'six_sigmas' found : {1}"
+                "").format(c1,c2)
+        raise ValueError
+
+    # Creating color pallet
+    m,l, ld, dl, d = dataplotter_colorscheme(main=colors, hues=shades)
+    l_colors = m + l + ld + dl + d
+    l_colors = [i for i in l_colors if i]
+
+    # Picking colors
+    while len(six_sigmas) > len(colors2):
+        picked_color = set(np.random.choice(l_colors, len(six_sigmas)))
+        colors2 = picked_color
+
+    # Creating list with colors
+    colors2 = list(colors2)
+    # Fixing text
+    figtext = dataplotter_textspacemanger(figlabels)
+    datatext = dataplotter_textspacemanger(datalabel)
+    mu_null = str(np.around(six_sigmas.Null_mean[0], 4))
+    std_null = str(np.around(six_sigmas.Null_std[0], 4))
+    mean_dict[0] = r"%s" %("Mean$_{\emptyset}$ = " + mu_null)
+
+    # Plotting data
+    df1[obs_column[0]].plot(
+        kind="kde", lw=2.5, c="#0C5F83", ls="-", label=r"%s" % (datatext[0]))
+    # Adding std null to legend
+    plt.axvline(x=0, c="black", ls="-.", lw=0,
+                label=r"%s" % (r"std$_{\emptyset}$ =\ "+std_null))
+
+    # Adding cutoffs from six sigmas frame
+    for i in range(len(six_sigmas)):
+        plt.axvline(
+            x=six_sigmas.Left.values[i], lw=2.5, ls="--", c=colors2[i])
+        plt.axvline(
+            x=six_sigmas.Right.values[i], ls="--",lw=2.5,
+            c=colors2[i], label=r"%s" % (mean_dict.get(
+                i,str(six_sigmas.Null_Sigmas.values[i]) + no_value)))
+
+    # Adding figure text and saving!
+    plt.xlim(xlimits)
+    plt.title(r"%s" % (figtext[0]))
+    plt.xlabel(r"%s" % (figtext[1]))
+    plt.ylabel(r"%s" % (figtext[2]))
+    plt.legend(loc=(1.02, 0.5), frameon=False)
+    plt.tick_params(axis="x", which="both", top="off")
+    plt.tick_params(axis="y", which="both", right="off")
+    plt.savefig(filename+".svg",format="svg")
+    plt.clf()
+    plt.close("all")
+    return "Figure with sigmas cut offs is done"
+
+
+def dataplotter_go_colors(go_table):
+    """ Takes a single data frame with and returns a dict with colors
+    for found GO Slim Terms.
+
+    go_table : pandas.core.frame.DataFrame(object)
+        The parameter called 'go_table' must contain a column labelled
+        'GO_Slim_Term'.
+
+    Returns
+    -------
+    go_colors : dict(object)
+        The 'go_colors' is dictionary where the keys are the GO slim terms
+        and the value is a color. The 'go_colors' is global variable.
+
+    See Also
+    --------
+    dataplotter_go_enrichment_plot : For the usage of 'go_colors'.
+    """
+    # Copying frame
+    go_t = ds.dataset_copy_frame(go_table)
+    # Global variable
+    global go_colors
+    # Local Globals
+    sorted_by_names = []
+    rm_color = ["white"]
+    rm_color2 = ["ivory", "aliceblue", "mintcream", "azure", "snow", "w"]
+
+    # Adding creating colors
+    all_colors = dict(mpl.colors.BASE_COLORS, **mpl.colors.CSS4_COLORS)
+
+    # Sorting colors by hue, saturation, value and as well as the name
+    by_hsv = sorted((
+        tuple(mpl.colors.rgb_to_hsv(mpl.colors.to_rgba(color)[:3])), name)
+        for name, color in all_colors.items())
+
+    # Get the sorted color names.
+    picked_colors = [name for hsv, name in by_hsv]
+
+    print ("Number of colors before filtering"
+           " out unwanted: {0}").format(len(picked_colors))
+
+    # Pick out colors that have word white.
+    rm_white = [i for i in picked_colors if rm_color[0] in i]
+
+    # Adding unwanted colors together
+    rm_colors = rm_white + rm_color2
+
+    # Removing unwanted colors from main colors
+    [picked_colors.pop(picked_colors.index(i)) for i in rm_colors]
+
+    print ("Number of colors left after filtering "
+           "colors {0}").format(len(picked_colors))
+
+    # Redistributing colorscheme
+    np.random.shuffle(picked_colors)
+
+    # All unique go terms found in 'go_table'
+    go_terms = go_t.GO_Slim_Term.unique().tolist()
+
+    go_terms.sort()
+
+    go_colors = {go_terms[i]: picked_colors[i] for i in range(len(go_terms))}
+    return go_colors
+
+
+def dataplotter_go_enrichment_plot(
+    df, figtitle=["Untitled"], filename="untitled", path_to_save="./"):
+    """Takes the return files from phen_o_links.dataset_go_enrichment and
+    returns a horizontal bar plot for GO slim terms that passed FDR.
+    The bar plot is saved as an svg image.
+
+    Parameters
+    ----------
+
+    df : pandas.core.frame.DataFrame(object)
+        The parameter called 'df' is a imported '.csv'-file created from
+        'phen_o_links'.dataset_go_enrichment return.
+
+    figtitle : list(optional)
+        The parameter called 'figtitle' is list object with a length of 1.
+        The parameter accepts strings.
+
+    filename : str(optional)
+        The 'filename' is the name of saved svg file created by function.
+        The default value of 'filename' is set to 'untitled'.
+
+    path_to_save : str(optional)
+        The 'path_to_save' is the relative of absolute path from current
+        working directory. The 'path_to_save' default value is './'.
+
+    Returns
+    fig1, ax1 : matplotlib.pyplot(objects)
+        The 'fig1' return is the figure object of the plot and the 'ax1' is
+        the axes object of the figure.
+
+    Raises
+    ------
+    ValueError
+        If global variable called 'go_colors' is empty.
+
+    See Also
+    --------
+    dataplotter_go_colors : For more information about 'go_colors' empty.
+    dataplotter_save_figure : For other saving option of 'fig1' and 'ax1'
+                              returns.
+    phen_o_links.dataset_go_enrichment : For more information about 'df' input.
+
+    """
+    # Global variable
+    global go_colors
+
+    # Copying frame
+    df1 = ds.dataset_copy_frame(df)
+
+    # Local globals
+    x_label = r"%s" %("Enrichment log$_{2}$")
+    labels = ["Dataset_vs_Database", "Sub_vs_Database", "Sub_vs_Dataset"]
+    names_switch =  {i: "Enrichment" for i in labels}
+    go_terms = [i for i in df1.columns if "Slim" in i]
+    df1 = df1.rename(columns={i:names_switch.get(i,i) for i in df1.columns})
+    org_columns = df1.columns.tolist()
+    interval = df1.Interval.unique().astype(list)[0]
+    title_suffix = r"\newline for sigma$_{\emptyset}$ interval$_{%s}$." %(interval)
+    figtitle2 = dataplotter_textspacemanger(figtitle)
+    file_to_save = path_to_save + filename + ".svg"
+
+    # Making sure that user has colors input.
+    if not go_colors:
+        text =("Please run function called dataplotter_go_colors"
+               " before plotting go slim enrichments!")
+        raise ValueError(text)
+
+    # Creating colors for all bars
+    bar_colors = [go_colors.get(i) for i in df1[go_terms[0]].tolist()]
+
+    # text fixing formatting latex rendering
+    columns_rm_underscore = dataplotter_textspacemanger(
+        org_columns, pattern="_", output=" ")
+
+    columns = dataplotter_textspacemanger(columns_rm_underscore)
+
+    # Changing column names!
+    df1.columns = columns
+
+    # Indexing df1 frame
+    df1 = df1.set_index([i for i in df1.columns if "Slim" in i])
+
+    # Making it GO terms latex formatted
+    index_names = df1.index.tolist()
+    index_names2 = dataplotter_textspacemanger(
+        index_names, pattern="_", output=" ")
+    index2 = dataplotter_textspacemanger(index_names2)
+
+    index_dict = {
+        index_names[i]:r"%s" %(index2[i]) for i in range(len(index_names))}
+    df1 = df1.rename(index=index_dict)
+
+    # Creating canvas and axes
+    fig1 = plt.figure(figsize=(8,6))
+    ax1 = fig1.add_subplot(111)
+
+    # Plotting horizontal bar plots
+
+    df1[df1.loc[:, "FDR"] == True].Enrichment.plot(
+        kind="barh", ax=ax1, color=bar_colors)
+
+    # Removing spines
+    dataplotter_spines_remover(
+        ax1, left=True, bottom=True, right=False, top=False, all_axis=False)
+
+    # Fixing edge colors
+    prp_axis = ax1.properties()
+
+    nr_bars = [i for i in  range(len(ax1.yaxis.get_majorticklabels()))]
+    bars_prp = prp_axis.get("children")
+
+    for i in bars_prp[:len(nr_bars)]:
+        i.set_edgecolor("black")
+    fig1.subplots_adjust(left=0.48)
+
+    # Setting text
+    ax1.set_xlabel(x_label)
+    fig1.suptitle(r"%s" %(figtitle2[0]+title_suffix))
+
+    # Saving figure
+    plt.savefig(file_to_save, format="svg")
+
+    return fig1, ax1
+
 
 
 if __name__ == "__main__":
