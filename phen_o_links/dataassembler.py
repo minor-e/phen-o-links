@@ -363,7 +363,7 @@ def data_assembler_multiple_subsets_via_listname(
 
 
 def data_assembler_subsetter(
-        df, index=[], columns=[], locked_value=[], values=[], index_values=[]):
+        df, index=[], column=[], locked_value=[], values=[], index_values=[]):
     """The function takes a concatenated file and divides it according
     to user input. The function returns a new table.
 
@@ -378,10 +378,11 @@ def data_assembler_subsetter(
         'index' parameter will order the data by acceding order and by it's
         unique identifiers. The 'index' parameters has length of 1.
 
-    columns : list(optional)
-        The parameter called 'columns' specifies how the 'df' input is divided
+    column : list(optional)
+        The parameter called 'column' specifies how the 'df' input is divided
         or grouped. If 'column' is left empty a function call is trigger and
-        user is forced to choice a 'work columns'.
+        user is forced to choice a 'work columns'. The 'column' has length
+        of 1.
 
     locked_value : list(optional)
         The parameter called 'locked_value' divides the 'df' according to the
@@ -440,27 +441,28 @@ def data_assembler_subsetter(
 
     # Parameter index and column not empty
     if not index or not columns:
-        columns, index = ds.dataset_pick_columns(df_work1, split='groupby')
+        column, index = ds.dataset_pick_columns(df_work1, split='groupby')
 
     if index or columns:
         try:
-            [df_columns.index(labels) for labels in columns]
+            [df_columns.index(labels) for labels in column]
             [df_columns.index(order) for order in index]
 
         except ValueError:
             text = ("\nThe values entered are not found as a column labels in "
-                    "'df'. Please reenter values for 'index' and 'columns'. "
+                    "'df'. Please reenter values for 'index' and 'column'. "
                     "Entered values was index = {0} and "
-                    " columns = {1} \n").format(index, columns)
-            print text
-            return
-    if len(index) > 1:
-        text = ("The 'index' parameter should only contain one element. "
-                "The values given by user was {0}. ").format(index)
+                    " columns = {1} \n").format(index, column)
+            raise ValueError(text)
+
+    if len(index) > 1 or len(column) >1:
+        text = ("The 'index'or column parameter should only contain one element. "
+                "The number of values given by user for \n'index':\t {0} and "
+                "'column':\t {1}. ").format(index, column)
         raise ValueError(text)
 
     # Grouping by
-    orderby = index + columns
+    orderby = index + column
     df_gr = df_work1.groupby(orderby)
 
     # Getting list of groups
