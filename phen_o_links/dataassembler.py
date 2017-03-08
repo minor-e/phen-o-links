@@ -12,8 +12,6 @@ import numpy as np
 import dataset as ds
 
 # Archaic functions
-
-
 def data_assembler_csv():
     """This is a data frame assembler. Takes multiples tab delimited csv files
     and builds one csv file containing all data within a directory. This
@@ -84,8 +82,8 @@ def data_assembler_II_multiple_files_import_CSV_format(
     """Constructs a file containing multiple csv files. Users should gather all
     wanted files in one  directory and navigate to that directory. Files should
     be numerated in ascending order to work correctly. However if user has
-    labelled files as following with 'words' +'_'+ 'plate order'. The function
-    will be able to sort the files correctly.
+    labelled files as following with 'words' +'_'+ 'plate order'+'_'.
+    The function will be able to sort the files correctly.
 
     Parameters
     ----------
@@ -99,7 +97,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
 
     flag : boolean(optional)
          The 'flag' operator is only viable if the file structure follows the
-         pattern 'word'+'_'+'plate order'.
+         pattern 'word'+'_'+'plate order'+'_'.
 
     clear_by : str(optional)
         The parameter called 'clear_by' takes one column header and removes
@@ -107,8 +105,12 @@ def data_assembler_II_multiple_files_import_CSV_format(
 
     Returns
     -------
-    new_data_frame : pandas.core.frame.DataFrame(object)
+    new_frame : pandas.core.frame.DataFrame(object)
         The newly assembled csv.
+
+    assemble_order : pandas.core.frame.DataFrame(object)
+        The order of how the csv's other text files was concatenated. From 0
+        to the last file.
 
     Raises
     ------
@@ -117,6 +119,12 @@ def data_assembler_II_multiple_files_import_CSV_format(
 
     ValueError
         If 'clear_by' value is not found in columns labels.
+
+    Notes
+    -----
+        The flag option is only viable if dates in file names are put after
+        plate order. Since the regular expression given can't distinguish
+        pattern date pattern in file name.
     """
 
     # Locale global
@@ -124,6 +132,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
     files_suffix = []
     new_order = []
     index_nr = []
+    assemble_order=dict()
 
     # File selection
     path = os.getcwd()
@@ -138,10 +147,10 @@ def data_assembler_II_multiple_files_import_CSV_format(
     if flag:
         tmp = []
         for i in files_suffix_with_nr:
-            tmp.append(re.findall("([^a-z].*?\d?\B)", i))
+            tmp.append(re.findall("(\B[^a-z]\S?\d\S\B)", i))
 
         # Getting 1st item in tmp
-        order_files = [int(tmp[i][0]) for i in range(len(tmp))]
+        order_files = [int(tmp[i][0].replace("_","")) for i in range(len(tmp))]
 
         # zipping objects
         new_order = zip(order_files, files_suffix_with_nr)
@@ -164,7 +173,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
         files_suffix = files_suffix_with_nr
         index_nr = 'N'
 
-    # Adding t names to filenames
+    # Adding flag to files present in path
     if not files_suffix_with_nr or index_nr.lower() == 'y':
         n = 0
         if flag:
@@ -181,6 +190,7 @@ def data_assembler_II_multiple_files_import_CSV_format(
         print "\n File concatenated as {0} : {1} \n".format(
             (filenames + 1), files_suffix[filenames])
         print filenames
+        assemble_order.update({filenames:files_suffix[filenames]})
         plate_nr = filenames + 1
         temp_file = pd.read_csv(files_suffix[filenames], delimiter=sep)
         temp_file['Plate_Nr'] = plate_nr
@@ -208,12 +218,19 @@ def data_assembler_II_multiple_files_import_CSV_format(
             new_frame = new_frame[new_frame["NotEmpty"] == True]
             del new_frame["NotEmpty"]
 
+    # Creating pandas series with the file(s) order
+    csv_order = pd.Series(assemble_order, index=assemble_order.keys())
+    csv_order = csv_order.reset_index()
+    csv_order.columns = ["Input_order_of_csv","Filename"]
+
     # Export new csv file with data sets
     new_frame.to_csv('./newfile_changeme.csv', sep=sep, index=False,
                      na_rep=np.nan)
+    csv_order.to_csv('assemble_order_of_csv_files.csv',sep=sep, index=False)
 
     # Shows result and reminds user to change name of file
-    print "\nDon't forget to change the name of newfile_changeme.csv"
+    print ("\nDon't forget to change the name of newfile_changeme.csv "
+           "and assemble_order_of_csv_files")
 
     return new_frame
 
@@ -346,7 +363,7 @@ def data_assembler_multiple_subsets_via_listname(
 
 
 def data_assembler_subsetter(
-        df, index=[], columns=[], locked_value=[], values=[], index_values=[]):
+        df, index=[], column=[], locked_value=[], values=[], index_values=[]):
     """The function takes a concatenated file and divides it according
     to user input. The function returns a new table.
 
@@ -361,10 +378,11 @@ def data_assembler_subsetter(
         'index' parameter will order the data by acceding order and by it's
         unique identifiers. The 'index' parameters has length of 1.
 
-    columns : list(optional)
-        The parameter called 'columns' specifies how the 'df' input is divided
+    column : list(optional)
+        The parameter called 'column' specifies how the 'df' input is divided
         or grouped. If 'column' is left empty a function call is trigger and
-        user is forced to choice a 'work columns'.
+        user is forced to choice a 'work columns'. The 'column' has length
+        of 1.
 
     locked_value : list(optional)
         The parameter called 'locked_value' divides the 'df' according to the
@@ -379,8 +397,9 @@ def data_assembler_subsetter(
         input.
 
     index_values : list(optional)
-        The 'index_values' parameter works only with 'values' and its a way of
-        overriding the given order by 'index'.
+        The 'index_values' parameter works only with 'values' parameter and
+        its a way of overriding the order given with the 'index' parameter.
+        Note that the items in 'index_values' must be present in 'index'.
 
     Returns
     -------
@@ -392,22 +411,63 @@ def data_assembler_subsetter(
     ------
     ValueError
         If values given in 'index' or 'columns' is not find in 'df'.
-        If 'index' contains more than 1 element to order 'df'.
+        If 'index' or 'column' contains more than 1 element to order 'df'.
         If 'index_values' is not found in 'df' by given 'index'.
 
     AssertionError
         If parameter called 'values' contains fewer than unique identifiers for
         given 'index'.
-
         If length in 'values' differed for given 'index_values'.
+    KeyError
+        If 'index' or 'column' labels given are missing 'values' in either or
+        both parameters.
 
     See Also
     --------
     phen_o_links.dataset_pick_columns : For more information about function call
-                                      called when 'columns' and 'index' are
-                                      left empty.
+                                        called when 'column' and 'index' are
+                                        left empty.
 
-    phen_o_links.dataset_filesave : To save csv-files from 'new_order' return
+    phen_o_links.dataset_filesave : To save csv-files from 'new_frames' return
+
+    Examples
+    --------
+    >>> # How to implement 'index_values' parameter
+
+    >>> import pandas as pd
+    >>> import phen_o_links.dataassembler as da
+
+    >>> df = pd.read_csv('file.csv', delimiter='\\t')
+
+    >>> index_df = df.frame_index.unique()
+
+    >>> index_df
+    [0, 1, 2, 3, 4, 5]
+
+    >>> df.columns
+    Index(u'frame_index', u'frame_position', u'frame_values',
+          u'label', dtype='object')
+
+    >>> df.frame_position.values
+    array([0, 1, 2 ..., 0, 1, 2])
+
+    >>> var1 = [2, 1]
+    >>> var2 = [5, 1]
+
+    >>> new_frames = da.data_assembler_subsetter(
+                df, column=['frame_position'], index=["frame_index"],
+                values=var1,index_values=var2)
+
+    >>> new_frames
+
+    >>> frame_index    frame_position    frame_values    label
+                  5                 2              10        A
+                  5                 2             135        B
+                  5                 2              15        C
+                  1                 1             0.1        F
+                  1                 1             0.2        F
+                  1                 1             0.3        X
+
 
     """
     # Local global
@@ -422,28 +482,29 @@ def data_assembler_subsetter(
     df_columns = df_work1.columns.tolist()
 
     # Parameter index and column not empty
-    if not index or not columns:
-        columns, index = ds.dataset_pick_columns(df_work1, split='groupby')
+    if not index or not column:
+        column, index = ds.dataset_pick_columns(df_work1, split='groupby')
 
     if index or columns:
         try:
-            [df_columns.index(labels) for labels in columns]
+            [df_columns.index(labels) for labels in column]
             [df_columns.index(order) for order in index]
 
         except ValueError:
             text = ("\nThe values entered are not found as a column labels in "
-                    "'df'. Please reenter values for 'index' and 'columns'. "
+                    "'df'. Please reenter values for 'index' and 'column'. "
                     "Entered values was index = {0} and "
-                    " columns = {1} \n").format(index, columns)
-            print text
-            return
-    if len(index) > 1:
-        text = ("The 'index' parameter should only contain one element. "
-                "The values given by user was {0}. ").format(index)
+                    " columns = {1} \n").format(index, column)
+            raise ValueError(text)
+
+    if len(index) > 1 or len(column) >1:
+        text = ("The 'index'or column parameter should only contain one element. "
+                "The number of values given by user for \n'index':\t {0} and "
+                "'column':\t {1}. ").format(index, column)
         raise ValueError(text)
 
     # Grouping by
-    orderby = index + columns
+    orderby = index + column
     df_gr = df_work1.groupby(orderby)
 
     # Getting list of groups
@@ -478,8 +539,7 @@ def data_assembler_subsetter(
                     "given by 'index'. The entered input for 'values' is {0} "
                     "and unique identifiers "
                     "in 'index' are {1}\n.").format(values, list_of_order)
-            print text
-            return
+            raise AssertionError(text)
 
         # Adding data to tmp
         for i in range(len(values)):
@@ -495,8 +555,7 @@ def data_assembler_subsetter(
                     "given by 'index_values'. The entered input for 'values' "
                     "is {0} and unique identifiers in 'index_values' "
                     "are {1}\n.").format(values, index_values)
-            print text
-            return
+            raise AssertionError(text)
 
         # Check that index_values are present
         try:
@@ -507,8 +566,7 @@ def data_assembler_subsetter(
                     "given 'index'. Entered 'index_values' was {0} "
                     "and 'index' values present was "
                     "{1}").format(index_values, list_of_order)
-            print text
-            return
+            raise ValueError(text)
 
         # Adding data to tmp
         for i in range(len(values)):
@@ -529,7 +587,14 @@ def data_assembler_subsetter(
         for i in tmp:
             print len(tmp)
             print i
-            new_frame.append(df_gr.get_group(i))
+            try:
+                new_frame.append(df_gr.get_group(i))
+            except KeyError:
+                text = ("Invalid group key given either 'index' or 'column' "
+                        "parameter is missing value or both values are wrong "
+                        "Value given for 'index':{0} value given "
+                        "'column':{1}").format(i[0], i[1])
+                raise KeyError(text)
         new_frames = pd.concat(new_frame, axis=0)
         return new_frames
 
@@ -913,19 +978,43 @@ def data_assembler_import_interaction_db(
     Parameters
     ----------
     filepath : str(object)
-    The 'filepath' is the relative or absolute path to the data base file.
-    Accepts only string entries.
+        The 'filepath' is the relative or absolute path to the data base file.
+        Accepts only string entries.
 
     delimiter : str('object')
-    The 'delimiter' parameter determines how the data base file should be
-    parsed. Default value for 'delimiter' is <<Tab>> separated.
+        The 'delimiter' parameter determines how the data base file should be
+        parsed. Default value for 'delimiter' is <<Tab>> separated.
 
     filter_type : list(object)
-    The 'filter_type' object list object that only accepts string entries.
-    The interaction database has 2 types of interaction either 'Genetic' or
-    'Physical'. Default value for 'filter_type' is null.
+        The 'filter_type' object list object that only accepts string entries.
+        The interaction database has 2 types of interaction either 'Genetic' or
+        'Physical'. Default value for 'filter_type' is null.
 
     row_skips : int(object)
+
+    Returns
+    -------
+    interaction_db : pandas.core.frame.DataFrame(object)
+        The interaction_db contains all known gene-gene interactions for
+        query gene.
+
+    Raises
+    ------
+    ValueError
+        If 'row_skip' input is not an integer.
+        If 'filter_type' input string is not 'Genetic' or 'Physical'.
+
+    OsError
+        If 'filepath' pointing to other than file.
+
+    TypeError
+        If 'filepath' or 'filter_type' input is other than string object.
+
+    See Also
+    --------
+    phen_o_links.dataset.dataset_filesave : For information about saving
+                                            return value 'interaction_db'
+                                            as csv-file
 
     """
 
@@ -941,6 +1030,8 @@ def data_assembler_import_interaction_db(
     if not isinstance(row_skips, int):
         text = ("Parameter 'row_skips' accepts only integers:"
                 "\n {0}").format(row_skips)
+        raise ValueError(text)
+
     if not isinstance(filepath, str):
         text = ("The parameter 'filepath' is not a"
                 "string type:\n {0}").format(type(filepath))
@@ -958,7 +1049,7 @@ def data_assembler_import_interaction_db(
     if not all([i in types for i in filter_type]):
         text = ("An invalid entry was given for 'filter_type':\n{0}\n "
                 "Please enter either 'Genetic' or "
-                "'Phsyical'.").format(filter_type)
+                "'Physical'.").format(filter_type)
         raise ValueError(text)
 
     # Importing database
@@ -975,6 +1066,7 @@ def data_assembler_import_interaction_db(
     else:
         interaction_db = interaction_db[interaction_db[4] == filter_type]
         return interaction_db
+
 
 if __name__ == "__main__":
     # Execute only as script

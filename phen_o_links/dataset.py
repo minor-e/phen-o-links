@@ -8,6 +8,7 @@
 import pandas as pd
 import numpy as np
 import re
+import fdr
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as distance
 from collections import defaultdict
@@ -15,6 +16,7 @@ from pprint import pprint
 from scipy.stats import ttest_ind
 from scipy.stats import linregress
 from scipy.stats import ttest_ind_from_stats
+from scipy.stats import hypergeom
 from os import listdir
 from os.path import abspath
 from os.path import exists
@@ -210,7 +212,7 @@ def dataset_subsample_control_colonies(df, df_ctrl):
 
     df_ctrl : pandas.core.frame.DataFrame(object)
         The parameter called 'df_ctrl' is the return value
-        from data_set.dataset_getting_control_positions function.
+        from dataset.dataset_getting_control_positions function.
 
     Returns
     -------
@@ -224,7 +226,7 @@ def dataset_subsample_control_colonies(df, df_ctrl):
 
     See Also
     --------
-        data_set.dataset_getting_control_positions : for more information about input
+        dataset.dataset_getting_control_positions : for more information about input
                                                      'df_ctrl'.
 
     """
@@ -322,7 +324,7 @@ def dataset_check_by_Global_Std(df, columns=[], indexer=[], aleph=0.05):
 
     See Also
     --------
-    data_set.dataset_pick_columns : For more information about 'indexer' and
+    dataset.dataset_pick_columns : For more information about 'indexer' and
                                     'split' parameters.
 
     References
@@ -573,7 +575,7 @@ def dataset_filter_by_p_values_and_fold_change(
     ----------
     df : pandas.core.frame.DataFrame(object)
         Input frame with adjusted p-values, frame
-        returned from data_set.dataset_p_values_adjustmentdata_set.
+        returned from dataset.dataset_p_values_adjustmentdata_set.
 
     alpha : float(optional)
         The 'alpha' parameter determines the type I error it's set
@@ -1583,7 +1585,6 @@ def dataset_label_checker(
         return 'Ask your local pandas wiz for help!'
 
 
-
 def dataset_expected_values(df, median=False, genenorm=[], new_columns=[]):
     """The function return the expected normalised value of experiment.
     Example the observed mean value for XC gene deletion is calculated by
@@ -1764,7 +1765,7 @@ def dataset_filter_within_a_range_of_value(df, filter_val, split="groupby"):
 
     See Also
     --------
-    data_set.dataset_pick_columns : For more information regarding "split"
+    dataset.dataset_pick_columns : For more information regarding "split"
                                     parameter.
     """
     try:
@@ -2666,7 +2667,7 @@ def dataset_create_coordinate_system(colony_format):
 
 
 def dataset_get_plate_peripheral(plate_coordinates):
-    """ Takes return output from data_set.dataset_create_coordinate_system and
+    """ Takes return output from dataset.dataset_create_coordinate_system and
     returns a pandas.core.frame.DataFrame(object) with border coordinates.
 
     Parameters
@@ -2959,6 +2960,7 @@ def dataset_on_identity_line(df, column=[], index=[], offset=0.05):
 
     return df1
 
+
 # Main worker functions
 
 def dataset_export_ORF_names_for_GO_Enrichment(
@@ -3041,7 +3043,8 @@ def dataset_export_ORF_names_for_GO_Enrichment(
 
 
 def dataset_import_goterms(
-        delimiter="\t", go_filter=["P"], filepath="./sgd_go_slimterm.csv"):
+        delimiter="\t", go_filter=["P"], filepath="./sgd_go_slimterm.csv",
+    not_csv=False):
     """Import csv-file with GO slim terms and filters by GO aspects. The
     columns are renamed 'ORF' for systematic nomenclature loci used by SGD,
     'Gene' as the standard gene name, 'SGDID' for the unique identifier used by
@@ -3064,6 +3067,10 @@ def dataset_import_goterms(
     filepath : str(optional)
         A relative path to a csv-file containing GO-annotation from current
         working directory. The default value was set to './sgd_go_slimterm.csv'
+
+    not_csv : boolean(optional)
+        The parameter 'not_csv' used to import any type of text file
+        structure that is readable with pandas.read_table option.
 
     Returns
     -------
@@ -3100,6 +3107,9 @@ def dataset_import_goterms(
     please visit: http://downloads.yeastgenome.org/curation/literature/
 
     """
+    # Global local
+    t_none_formatted = []
+
     # Check for existence of file.
     try:
         assert(exists(filepath))
@@ -3110,8 +3120,13 @@ def dataset_import_goterms(
         print text
         return
 
-    # Importing file.
-    t_none_formatted = pd.read_csv(filepath, delimiter=delimiter, header=None)
+    if not_csv:
+        t_none_formatted = pd.read_table(
+            filepath, delimiter=delimiter, header=None)
+
+    else:
+        # Importing file.
+        t_none_formatted = pd.read_csv(filepath, delimiter=delimiter, header=None)
 
     # Clear all empty columns.
     t_format = t_none_formatted.copy()
@@ -3160,7 +3175,7 @@ def dataset_import_goterms(
     if not go_filter or len(go_filter) > 2:
         return t_named
     if len(go_filter) == 1:
-        t_GO = t_named[t_named['GO_Aspect'] == go_filter[0]]
+        t_GO = t_named.loc[t_named['GO_Aspect'] == go_filter[0]]
 
         # Return data frame with filtered GO slim terms.
         return t_GO
@@ -3177,7 +3192,7 @@ def dataset_import_goterms(
 def dataset_mu_and_sigma_test(df, n=None, columns=[]):
     """Take a columns labels and calculates the mean and standard deviation
     (std) for that given label checks if value x from label passes the
-    threshold calledt, t = mean +/- n x std. The function will check if x>=t
+    threshold called, t = mean +/- n x std. The function will check if x>=t
     or x<=t. Function will always return mu and sigma test for n=2 and n=3.
 
     Parameters
@@ -3264,6 +3279,395 @@ def dataset_mu_and_sigma_test(df, n=None, columns=[]):
                         df2[i].values <= new_frame[i]['Mean'] - (
                             n * new_frame[i]['std']))
     return df2, new_frame
+
+
+def dataset_six_sigmas_cutoff(df, n=[], obs_column=[], null_column=[]):
+    """The takes any given 'df' and calculates six sigmas cutoffs from a given
+    null model against observed data. The function assumes that variation found
+    in null model is equal to observed data and that observed data is normally
+    distributed.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is pandas data frame that contains observed data and null
+        hypothesis data.
+
+    n : float(optional)
+        The 'n' is an optional parameter that is multiplied with standard
+        deviation of the 'null_column' to get cutoffs. If 'n' parameters is
+        a extra column is added to 'df'.
+
+    obs_column : list(object)
+        The 'obs_column' is list that accepts only strings and has a length of
+        one. The 'obs_column' is column label in 'df' with observed data.
+
+    null_column : list(object)
+        The 'null_column' is used in the same matter as 'obs_column', but
+        specifies the label for null data. The 'null_column' accepts only
+        strings and has a length of one.
+
+    Returns
+    -------
+    df1 : pandas.core.frame.DataFrame(object)
+        The 'df1' contains 6 or 7 new columns that has been tested for window
+        6 sigmas from null hypothesis.
+
+    six_sigmas : pandas.core.frame.DataFrame(object)
+        The is the standard deviation from null used in test for cutoffs.
+
+    Raises
+    ------
+    ValueError
+        If parameters 'obs_column' or 'null_column' are left empty,
+        length greater than one and column label is not found.
+
+    """
+    # Locale Global
+    l3 = []
+    n1 = []
+    values = []
+    six_sigmas = pd.DataFrame(
+        index=range(7),
+        columns=["Null_Sigmas", "Left", "Right"]).fillna(np.nan)
+    six_sigmas.Null_Sigmas = [int(i) for i in range(7)]
+    columns = df.columns.tolist()
+    # Copy 'df' frame
+    df1 = dataset_copy_frame(df)
+
+    # Check that inputs are correct
+    if (len(obs_column) and len(null_column)) != 1:
+        text = ("Parameters 'obs_column' and 'null_column' is either empty"
+                " or not equal to one!\n ('obs_column', {0}) 'null_column'"
+                " , {1}").format(obs_column, null_column)
+        raise ValueError(text)
+
+    l3 = obs_column + null_column
+
+    if not sum([isinstance(i, str) for i in l3]) == 2:
+        text = ("Parameters 'obs_column' and 'null_column' are not stings!"
+                "\n obs_column = {0}, null_column = {1}"
+                " ").format(obs_column, null_column)
+        raise ValueError(text)
+
+    if not sum([i in df1.columns for i in l3]) == 2:
+        text = ("Items in given in 'obs_column' and/or 'null_column' was not"
+                " found has a column label in 'df'."
+                "\n 'df' columns = {0}\n "
+                "obs_column={1}\n "
+                "null_column{2}. "
+                " ").format(columns, obs_column, null_column)
+        raise ValueError(text)
+
+    # Calculating mean and std from null_column values.
+    mu = df1[null_column[0]].mean()
+    sigma = df1[null_column[0]].std()
+
+    # Checking for custom cutoff
+    if n:
+        # Checking that input is correct
+        try:
+            n1 = [float(i) for i in n]
+
+        except ValueError:
+            text = ("Item {0} input in 'n' parameter not a digit."
+                    "Try to convert items until {0}").format(i)
+            print text
+
+            n1 = [float(i) for i in n[:n.index(i)]]
+        values = six_sigmas.Null_Sigmas.tolist() + n1
+        six_sigmas = pd.DataFrame(
+            index=range(len(values)),
+            columns=["Null_Sigmas", "Left", "Right"]).fillna(np.nan)
+        six_sigmas.Null_Sigmas = values
+        six_sigmas = six_sigmas.sort_values(by="Null_Sigmas")
+
+    # Testing null hypothesis
+    for i in six_sigmas.Null_Sigmas.values:
+        df1[str(obs_column[0]) + '_' + str(i) + "_x_sigmas"] = (
+            df1[obs_column[0]].values >= mu + i * sigma) | (
+                df1[obs_column[0]].values <= mu - (i * sigma))
+
+    # Adding data cut offs to six_sigmas frame.
+    six_sigmas.Left = [
+        (mu - (sigma * i)) for i in six_sigmas.Null_Sigmas.values]
+    six_sigmas.Right = [
+        (mu + (sigma * i)) for i in six_sigmas.Null_Sigmas.values]
+
+    # Adding original null std and mean to six_sigmas frame
+    six_sigmas["Null_mean"] = mu
+    six_sigmas["Null_std"] = sigma
+
+    # Adding additional columns
+    left = [
+        sum(df1[obs_column[0]].values <= i) for i in six_sigmas.Left.values]
+    right = [
+        sum(df1[obs_column[0]].values >= i) for i in six_sigmas.Right.values]
+    six_sigmas["Left_Passed"] = left
+    six_sigmas["Right_Passed"] = right
+    six_sigmas["Total_Passed"] = six_sigmas.Left_Passed + six_sigmas.Right_Passed
+    six_sigmas["Total_Pr"] = six_sigmas.Total_Passed/float(len(df1))
+    six_sigmas["Left_Pr"] = six_sigmas.Left_Passed/float(len(df1))
+    six_sigmas["Right_Pr"] = six_sigmas.Right_Passed/float(len(df1))
+
+
+    # Returning df1 and six_sigmas
+    return df1, six_sigmas
+
+
+def dataset_interval_from_sigmas_cutoff(df, six_sigmas, column=[], index=[]):
+    """Takes the pandas data frame labelled 'six_sigmas' and returns
+    a 'limits_table', 'left' and 'right'.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is pandas data frame with the wanted data.
+
+    six_sigmas : pandas.core.DataFrame(object)
+        The 'six_sigmas' is one of the return data frames from a function
+        called 'dataset_six_sigmas_cutoff'.
+
+    column : list(object)
+        The 'column' parameter is a list object. The 'column' accepts
+        only column labels that are present in 'df'. The labels inserted in
+        'columns' are used for the 'orf_selection'. If parameter
+        left empty a function call is performed.
+    index : list(object)
+        The parameter called 'index' is the given column labels from 'df'
+        e.g. plate nr, dates, systematic names etc. If 'index' is null or
+        empty a function call is performed.
+
+    Returns
+    -------
+
+    limit_table : pandas.core.frame.DataFrame(object)
+        The 'limit_table' is a restructured 'six_sigmas' data frame
+        with intervals.
+
+    left, right : pandas.core.frame.DataFrame(object)
+        The returns values that passes the 'left' and 'right' tails
+        cutoffs
+
+    Raises
+    ------
+    KeyError
+        If items are not found in 'six_sigmas'
+
+    See Also
+    --------
+    dataset_pick_columns : For more information about function call if
+                           'columns' or 'index' left empty.
+    Notes
+    -----
+        The 'limits_table' contains the column labels called 'Left_limit_test'
+        and'Right_limit_test'. Both of theses labels contains values with the
+        'A','B' and 'C' letters. The 'A' shows values that passes the following
+        test limit(A0)>= x >=limit(A0+n). The letter 'B' limit(A0)<= x
+        <=limit(A0+n). The '(A0)' is the start values and 'n' is the distance
+        to next limit and 'x' is value 'column'. The test marked with 'C' are
+        intervals , where (A0) == (A0 +n).
+
+    """
+    # Global local
+    n_columns = ["Null_Sigmas", "Left", "Right"]
+    outcomes = [(0.0, -1.0), (1.0, -1.0), (1.0, 0.0), (-1.0, -1.0)]
+    retrived_values = []
+    limit_values = []
+    frame = []
+    names = []
+    interval_vals = []
+    new_left_labels = []
+    new_right_labels = []
+
+    # Copying frames
+    df1 = dataset_copy_frame(df)
+    cutoffs = dataset_copy_frame(six_sigmas)
+
+    # Checking inputs
+    try:
+        frame = cutoffs[n_columns]
+    except KeyError:
+        text = ("The 'six_sigmas' input had not the asserted column labels!"
+                " Please check columns 'six_sigmas' : {0} \n "
+                " Expected columns : {1} "
+                " ").format(cutoffs.columns.tolist(), n_columns)
+        raise KeyError(text)
+
+    if not(column and index):
+        column, index = dataset_pick_columns(df, split="groupby")
+
+    # Paring data together
+    for idx in range(len(n_columns)):
+        tmp = [
+            frame[n_columns[idx]][i:i+2].values for i in range(len(frame)+1)]
+        retrived_values.append(tmp)
+
+    for val in retrived_values:
+        tmp2 = [i for i in val if not len(i)%2 and len(i)>0]
+        limit_values.append(tmp2)
+
+    # Creating pandas data frame
+    limits_frame = pd.DataFrame(limit_values).T
+    limits_frame2 = [
+        limits_frame[i].apply(pd.Series) for i in range(
+            limits_frame.shape[1])]
+    limits_table = pd.concat(limits_frame2, axis=1)
+
+    # Creating names to limits_table
+    for i in range(len(n_columns)):
+        tmp3 = [n_columns[i]+"_Start", n_columns[i]+"_End"]
+        names.append(tmp3)
+    names = list(np.ravel(names))
+    limits_table.columns = names
+
+    # Creating flags for testing
+    limits_table["Left"] = zip(
+        np.sign(limits_table.Left_Start.values), np.sign(
+            limits_table.Left_End.values))
+
+    limits_table["Right"] = zip(
+        np.sign(limits_table.Right_Start.values), np.sign(
+            limits_table.Right_End.values))
+
+    # Creating flag for limits tests
+    test_flag = {i: "A" for i in outcomes}
+    null_outcome = {(0.0, 0.0): "C"}
+    test_flag.update(null_outcome)
+
+    limits_table["Left_limit_tests"] = [
+        test_flag.get(i, "B") for i in limits_table.Left.values]
+
+    limits_table["Right_limit_tests"] = [
+        test_flag.get(i, "B") for i in limits_table.Right.values]
+
+    # Getting creating sub frames
+    right, left = df1[index+column], df1[index+column]
+
+    right_labels = [i for i in limits_table.columns if "Right" in i ]
+    left_labels = [i for i in limits_table.columns if "Left" in i ]
+
+    # Creating orfs kept.
+    for i in range(len(limits_table)):
+        if limits_table[left_labels[-1]].values[i] == "A":
+            left["A_left_"+ str(i)] = (
+                (limits_table[
+                    left_labels[0]].values[i] >= left[column].values) & (
+                        left[column].values >= limits_table[
+                            left_labels[1]].values[i]))
+
+        elif limits_table[left_labels[-1]].values[i] == "C":
+            left["Intervall_Null"] = "A_left_" + str(i)
+
+        else:
+            left["B_left_"+ str(i)] = (
+                (limits_table[
+                    left_labels[0]].values[i] <= left[column].values) & (
+                        left[column].values <= limits_table[
+                            left_labels[1]].values[i]))
+
+    for i in range(len(limits_table)):
+        if limits_table[right_labels[-1]].values[i] == "A":
+            right['A_right_'+str(i)] = (
+                (limits_table[
+                    right_labels[0]].values[i] >= right[column].values) & (
+                        right[column].values >= limits_table[
+                            right_labels[1]].values[i]))
+
+        elif limits_table[right_labels[-1]].values[i] == "C":
+            right["Intervall_Null"] = "A_right_" + str(i)
+        else:
+            right['B_right_'+str(i)] = (
+                (limits_table[
+                    right_labels[0]].values[i] <= right[column].values) & (
+                        right[column].values <= limits_table[
+                            right_labels[1]].values[i]))
+    limits_table.Left_limit_tests = [
+        limits_table.Left_limit_tests[i] +"_left_"+ str(i) for i in range(
+            len(limits_table))]
+    limits_table.Right_limit_tests = [
+        limits_table.Right_limit_tests[i] +"_right_"+ str(i) for i in range(
+            len(limits_table))]
+
+    # Renaming columns labels in left and right
+    new_left_labels = [i for i in left.columns if "A_" in i or "B_" in i]
+    new_right_labels = [i for i in right.columns if "A_" in i or "B_" in i]
+
+    # intervals
+    interval_vals = zip(
+        limits_table.Null_Sigmas_Start, limits_table.Null_Sigmas_End)
+
+    left_cols = {
+        new_left_labels[i]: interval_vals[i] for i in range(len(
+            new_left_labels))}
+
+    right_cols = {
+        new_right_labels[i]: interval_vals[i] for i in range(len(
+            new_right_labels))}
+
+    left = left.rename(columns=left_cols)
+    right = right.rename(columns=right_cols)
+
+    return limits_table, left, right
+
+
+def dataset_linkage_error_correction(df, linkage_error):
+    """ Takes a any given pandas data frame and returns linkage error flag
+    for orfs present in 'df'.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The "df" parameter is a pandas data frame that contains a column
+        label named "ORF".
+
+    linkage_error : pandas.core.frame.DataFrame(object).
+        The "linkage_error" consist of 6 columns. The column label for index
+        nr 1 in 'linkage_error' data frame should contain the systematic ORFs
+        name .
+
+    Returns
+    -------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' is the same input as the 'df' parameter at the start with the
+        addition of an extra column labelled 'Linkage_Error_Filter'. The new
+        label returns a boolean True for ORFs found both in 'df' and
+        'linkage_error'.
+
+    Raises
+    ------
+    ValueError
+        If 'linkage_error' input has 6 columns.
+
+    """
+    # Global Local
+    linkage_columns = [
+        "Primary_DBID", "ORF_Systematic_Name", "Organism", "Gene",
+        "Standard_Names_Verbose", "Length"]
+    column = []
+
+    # Copying frame
+    df1 = dataset_copy_frame(df)
+    linkage = dataset_copy_frame(linkage_error)
+
+    if linkage.shape[1] == 6:
+        linkage.columns = linkage_columns
+    else:
+        text = ("Please format 'linkage_error' data frame with following "
+                "labels:\n {0}").format(linkage_columns)
+        raise ValueError(text)
+
+    if not(column):
+        column = [
+            df1.columns.tolist().index(i) for i in df1.columns
+            if "ORF" in i and len(i) == 3]
+
+    # Creating idx
+    orfs_filter = set(linkage.ORF_Systematic_Name.tolist())
+
+    df1["Linkage_Error_Filter"] = df1[df1.columns[column[0]]].isin(orfs_filter)
+
+    return df1
 
 
 def dataset_pairwise_distance_points(df_work, workcolumns):
@@ -3388,7 +3792,7 @@ def dataset_outliers_id_line_distance(df, num, columns=[], indexer=[]):
 
     See Also
     --------
-    data_set.dataset_pick_columns : for more information about 'split'
+    dataset.dataset_pick_columns : for more information about 'split'
                                     parameter.
 
     Raises
@@ -3582,7 +3986,7 @@ def dataset_outliers_midpoint(df, percentage, num, columns=[], indexer=[]):
 
     See Also
     --------
-    data_set.dataset_pick_columns : For more information about 'split'
+    dataset.dataset_pick_columns : For more information about 'split'
                                     parameter.
 
     References
@@ -4652,6 +5056,282 @@ def dataset_calculate_p_value_from_stats(
         dataset_filesave(pvalues, filename='table_with_only_p_values')
 
     return merged_df2
+
+
+def dataset_go_enrichment_calc(df, subframe, go_table ):
+    """Takes 3 pandas data frame object and returns 2 data frame objects.
+    The returns values contains go enrichment data. Warning this
+    function takes some time to run!
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the input data frame that contains all ORFs in
+        the dataset.
+
+    subframe : pandas.core.frame.DataFrame(object)
+        The 'subframe' parameter is a subset from the 'df' frame e.g. all
+        ORF's that passes p-value threshold another type of cutoff.
+
+    go_table : pandas.core.frame.DataFrame(object)
+        The 'go_table' is specialized data frame that contains GO Slim Terms
+        and other information. See more information about 'go_table' layouts
+        in 'See Also' section.
+
+    Returns
+    -------
+    go_stats : pandas.core.frame.DataFrame(object)
+        The 'go_stats' general summary over hits and missed ORFs between
+        'df' and 'go_table' inputs.
+
+    go_enriched : list(object)
+        The 'go_enriched' is list object with length of 3. The items in the
+        list are pandas.core.frame.DataFrame(object). The index order in the
+        list corresponds to different types of comparisons. First index
+        is 'df' vs 'go_table' hits, second is 'subframe' vs 'go_table' hits
+        and lastly the third is 'subframe' vs 'df' hits. Hits are defined
+        if the ORF's is presents in pandas data frame.
+
+    Raises
+    ------
+    ValueError
+        If 'df', 'subframe', and/or 'go_table' lacks the columns label "ORF".
+
+    See Also
+    --------
+    dataset_import_goterms : For more information about 'go_table' formats.
+
+    """
+    # Local Globals
+    n_cols = ["Dataset", "Sub"]
+    df1 = dataset_copy_frame(df)
+    sub = dataset_copy_frame(subframe)
+    go_t = dataset_copy_frame(go_table)
+    dataframes = []
+    dataframes = [df1, sub, go_t]
+    tmp = []
+    go_enriched = []
+
+    # Checking that inputs are correct
+    labels = [ i for i in dataframes if "ORF" in i.columns]
+
+    if not (len(labels) == 3):
+        text =("Column named 'ORF' is missing in 'df', 'sue' and or "
+               " 'go_table'")
+        raise ValueError(text)
+
+    if sub.ORF.shape[0] == 0:
+        text = ("Input 'sub' is empty therefore returns are "
+                "('None', 'None')")
+        sub.insert(sub.shape[1], "Interval", (0,0))
+        sub = sub.fillna(0)
+        go_stats = sub
+        sub.loc[:, "FDR"] = False
+        sub.loc[:, "P_value"] = 1.0
+        go_enriched = [sub, sub, sub]
+        print text
+        return go_stats, go_enriched
+
+    # Creating Number of unique orfs
+    n_size = [
+        float(dataframes[i].ORF.unique().size) for i in range(len(dataframes))]
+    ds_n, sub_n, db_n = n_size[0], n_size[1], n_size[2]
+    print "Number of orfs in dataset" ,ds_n
+    print "Number of orfs in sub" ,sub_n
+    print "Number of orfs in database" ,db_n
+
+    # Creating sub frame with go_terms only
+    labels2 = [
+        i for i in go_t.columns.tolist() if
+        "Slim" in  i or "GOID" in i or "ORF" in i]
+
+    go = go_t.loc[:, labels2]
+
+    # Creating new columns in subframe
+    for names in n_cols:
+        go.loc[:, names] = 0
+    # Grouping label
+    gr_index = [i for i in labels2 if "Slim" in i]
+
+    # User friendly message
+    text_wr = ("Note that this may take while and you seem tired grab "
+               "a coffee or tea? Or perhaps take walk or start writing that "
+               "novel.")
+    print UserWarning(text_wr)
+
+    # n per GO Slim categories
+    for i in range(len(n_cols)):
+        for orf in dataframes[i].ORF.unique():
+            go.loc[go.ORF==orf,n_cols[i]] +=1
+    go_stats = go.groupby(gr_index).sum()
+    orf_db = go.groupby(gr_index).size()
+    go_stats.loc[:,"Database"] = orf_db
+
+    # Calculating Enrichment
+    go_stats.loc[:,"Dataset_vs_Database"] = np.log2(
+        go_stats.Dataset/ds_n) - np.log2(go_stats.Database/db_n)
+
+    go_stats.loc[:,"Sub_vs_Database"] = np.log2(
+        go_stats.Sub/sub_n) - np.log2(go_stats.Database/db_n)
+
+    go_stats.loc[:,"Sub_vs_Dataset"] = np.log2(
+        go_stats.Sub/sub_n) - np.log2(go_stats.Dataset/ds_n)
+
+    for i in go_stats.columns[-3:]:
+        tmp2 = go_stats.loc[go_stats[i]>0]
+        print tmp2
+        tmp.append(tmp2)
+
+    # Creating new frames
+    ds_vs_db, sub_vs_db, sub_vs_ds = tmp[0], tmp[1], tmp[2]
+
+    ds_vs_db.loc[:,"P_value"] = ds_vs_db.apply(
+        lambda val: hypergeom.pmf(val.Dataset, db_n, val.Database, ds_n),
+        axis=1)
+    sub_vs_db.loc[:,"P_value"] = sub_vs_db.apply(
+        lambda val: hypergeom.pmf(val.Sub, db_n, val.Database, sub_n), axis=1)
+    sub_vs_ds.loc[:,"P_value"] = sub_vs_ds.apply(
+        lambda val: hypergeom.pmf(val.Sub, db_n, val.Dataset, sub_n), axis=1)
+
+    # Deleting unwanted columns
+    ds_vs_db = ds_vs_db.drop(ds_vs_db.columns[-3:-1],axis=1)
+    sub_vs_db = sub_vs_db.drop(sub_vs_db.columns[[-4,-2,]], axis=1)
+    sub_vs_ds = sub_vs_ds.drop(sub_vs_ds.columns[[-4,-3,]], axis=1)
+
+    # Sort values by P
+    ds_vs_db = ds_vs_db.sort_values(by="P_value")
+    sub_vs_db = sub_vs_db.sort_values(by="P_value")
+    sub_vs_ds = sub_vs_ds.sort_values(by="P_value")
+
+    # Adding sub unique ORFs found in sub
+    sub_vs_db.loc[:, "n_sub"] = sub_n
+    sub_vs_ds.loc[:, "n_sub"] = sub_n
+
+    go_enriched = [ds_vs_db, sub_vs_db, sub_vs_ds]
+
+    return go_stats, go_enriched
+
+
+def dataset_go_enrichment(
+    tails, go_slims, alpha_error=0.1, flag="untitled", filepath="./"):
+    """Takes pandas data frame and tail for a given dataset and returns
+    enrichments of go-tables. Data frame inputs must contain ORF as a valid
+    column label. The function returns multiple csv-files.
+
+    Parameters
+    ----------
+    tails :  pandas.core.frame.DataFrame(object)
+        The 'tails' parameter is the return values from the function called
+        dataset_interval_from_sigmas_cutoff labelled as 'left' and 'right'.
+
+    go_slims : pandas.core.frame.DataFrame(object)
+        The 'go_slim' parameter is a specialized pandas data frame
+        that contains the relevant information to do a go enrichment analysis.
+        For more information of how to format data frame 'See Also' section
+        further down.
+
+    alpha_error : float(optional)
+        The 'alpha_error' is the tolerated type I error for calculated the
+        p-values. The 'alpha_error' is set to '0.1' for a one-tailed test.
+
+    flag : str(optional)
+        The 'flag' parameter is a string object. The 'flag' is additional
+        text entry for the 'csv' files names. The default values is
+        'untitled'.
+
+    filepath : str(optional)
+        The 'filepath' is the relative path from current working directory
+        to assigned location. The default value for 'filepath' is './'.
+
+    Returns
+    -------
+    files : csv
+        The function returns 4 different types of csv-files labelled for
+        the different types of comparisons made. Files labelled as 'go_stats'
+        is a summary table over hits and miss between data frames.
+        The files labelled as 'ds_vs_db' is the result between 'tails' against
+        database 'go_slims'. The csv-files labelled 'sub_vs_db' and 'sub_vs_ds'
+        is the subset from 'tails' based on the given cutoff intervals against
+        'go_slims' and against 'tails'.
+
+    Raises
+    ------
+    ValueError
+        If 'tails' or 'go_slims' lacks the column label named 'ORF'.
+
+    See Also
+    --------
+    dataset_go_enrichment_calc : For more information about how go-enrichment
+                                 is calculated.
+    dataset_import_goterms : For more information of about 'go_slims' input
+                             and how its formatted.
+
+    dataset_interval_from_sigmas_cutoff : For more information about 'tails'
+                                          input and its relation to the 'left'
+                                          and 'right' return.
+    Notes
+    -----
+        The that fdr.py file most be present imported properly for function
+        to run.
+
+    """
+    # Local global
+    go_terms = dataset_copy_frame(go_slims)
+    tail =  dataset_copy_frame(tails)
+    names = []
+    names_formatted = {}
+    dsdb = "ds_vs_db_"
+    subdb = "sub_vs_db_"
+    subds = "sub_vs_ds_"
+    gs = "go_stats_"
+    subframes = []
+    stats_go = []
+    enrich_go =[]
+
+    # Getting column names from tails
+    names = [i for i in tail.columns if isinstance(i, tuple)]
+    names_formatted = {
+        i:"_"+str(int(i[0]))+"_"+str(int(i[1])) for i in names}
+
+    for label in names:
+        tmp_0 = tail.loc[tail[label] ==True]
+        subframes.append(tmp_0)
+
+    for i in range(len(names)):
+        go, go_enrich = dataset_go_enrichment_calc(
+            tail,subframes[i], go_terms)
+        # Adding interval column
+        go.loc[:,"Interval"] = str(names[i])
+        go_enrich[0].loc[:,"Interval"] = str(names[i])
+        go_enrich[1].loc[:,"Interval"] = str(names[i])
+        go_enrich[2].loc[:,"Interval"] = str(names[i])
+        stats_go.append(go)
+        enrich_go.append(go_enrich)
+
+    for i in range(len(enrich_go)):
+        for y in range(len(enrich_go[i])):
+            # Check that input not 0
+            if enrich_go[i][y].shape[0] == 0:
+                text = ("Skipped column labelled {0} since "
+                        "values for column labels "
+                        "is empty").format(names[i])
+            p_vector = fdr.FDR(
+                enrich_go[i][y], field="P_value",alpha=alpha_error)
+            enrich_go[i][y] = enrich_go[i][y].apply(p_vector, axis=1)
+
+    for i in range(len(names)):
+        stat_name = gs + flag +"%s" %(names_formatted.get(names[i]))
+        var = dsdb + flag + "%s" %(names_formatted.get(names[i]))
+        var2 = subdb + flag + "%s" %(names_formatted.get(names[i]))
+        var3 = subds + flag + "%s" %(names_formatted.get(names[i]))
+        dataset_filesave(stats_go[i], filename=stat_name, pathdir=filepath)
+        dataset_filesave(
+                enrich_go[i][0], filename=var, pathdir=filepath)
+        dataset_filesave(
+            enrich_go[i][1], filename=var2, pathdir=filepath)
+        dataset_filesave(
+            enrich_go[i][2], filename=var3, pathdir=filepath)
+    return "Your files have been made"
 
 
 if __name__ == "__main__":
