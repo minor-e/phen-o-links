@@ -411,7 +411,7 @@ def data_assembler_subsetter(
     ------
     ValueError
         If values given in 'index' or 'columns' is not find in 'df'.
-        If 'index' contains more than 1 element to order 'df'.
+        If 'index' or 'column' contains more than 1 element to order 'df'.
         If 'index_values' is not found in 'df' by given 'index'.
 
     AssertionError
@@ -480,7 +480,7 @@ def data_assembler_subsetter(
     df_columns = df_work1.columns.tolist()
 
     # Parameter index and column not empty
-    if not index or not columns:
+    if not index or not column:
         column, index = ds.dataset_pick_columns(df_work1, split='groupby')
 
     if index or columns:
@@ -537,8 +537,7 @@ def data_assembler_subsetter(
                     "given by 'index'. The entered input for 'values' is {0} "
                     "and unique identifiers "
                     "in 'index' are {1}\n.").format(values, list_of_order)
-            print text
-            return
+            raise AssertionError(text)
 
         # Adding data to tmp
         for i in range(len(values)):
@@ -554,8 +553,7 @@ def data_assembler_subsetter(
                     "given by 'index_values'. The entered input for 'values' "
                     "is {0} and unique identifiers in 'index_values' "
                     "are {1}\n.").format(values, index_values)
-            print text
-            return
+            raise AssertionError(text)
 
         # Check that index_values are present
         try:
@@ -566,8 +564,7 @@ def data_assembler_subsetter(
                     "given 'index'. Entered 'index_values' was {0} "
                     "and 'index' values present was "
                     "{1}").format(index_values, list_of_order)
-            print text
-            return
+            raise ValueError(text)
 
         # Adding data to tmp
         for i in range(len(values)):
