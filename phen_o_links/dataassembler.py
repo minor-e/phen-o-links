@@ -417,13 +417,15 @@ def data_assembler_subsetter(
     AssertionError
         If parameter called 'values' contains fewer than unique identifiers for
         given 'index'.
-
         If length in 'values' differed for given 'index_values'.
+    KeyError
+        If 'index' or 'column' labels given are missing 'values' in either or
+        both parameters.
 
     See Also
     --------
     phen_o_links.dataset_pick_columns : For more information about function call
-                                        called when 'columns' and 'index' are
+                                        called when 'column' and 'index' are
                                         left empty.
 
     phen_o_links.dataset_filesave : To save csv-files from 'new_frames' return
@@ -585,7 +587,14 @@ def data_assembler_subsetter(
         for i in tmp:
             print len(tmp)
             print i
-            new_frame.append(df_gr.get_group(i))
+            try:
+                new_frame.append(df_gr.get_group(i))
+            except KeyError:
+                text = ("Invalid group key given either 'index' or 'column' "
+                        "parameter is missing value or both values are wrong "
+                        "Value given for 'index':{0} value given "
+                        "'column':{1}").format(i[0], i[1])
+                raise KeyError(text)
         new_frames = pd.concat(new_frame, axis=0)
         return new_frames
 
