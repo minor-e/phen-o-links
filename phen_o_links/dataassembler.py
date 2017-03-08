@@ -397,8 +397,9 @@ def data_assembler_subsetter(
         input.
 
     index_values : list(optional)
-        The 'index_values' parameter works only with 'values' and its a way of
-        overriding the given order by 'index'.
+        The 'index_values' parameter works only with 'values' parameter and
+        its a way of overriding the order given with the 'index' parameter.
+        Note that the items in 'index_values' must be present in 'index'.
 
     Returns
     -------
@@ -422,10 +423,49 @@ def data_assembler_subsetter(
     See Also
     --------
     phen_o_links.dataset_pick_columns : For more information about function call
-                                      called when 'columns' and 'index' are
-                                      left empty.
+                                        called when 'columns' and 'index' are
+                                        left empty.
 
-    phen_o_links.dataset_filesave : To save csv-files from 'new_order' return
+    phen_o_links.dataset_filesave : To save csv-files from 'new_frames' return
+
+    Examples
+    --------
+    >>> # How to implement 'index_values' parameter
+
+    >>> import pandas as pd
+    >>> import phen_o_links.dataassembler as da
+
+    >>> df = pd.read_csv('file.csv', delimiter='\\t')
+
+    >>> index_df = df.frame_index.unique()
+
+    >>> index_df
+    [0, 1, 2, 3, 4, 5]
+
+    >>> df.columns
+    Index(u'frame_index', u'frame_position', u'frame_values',
+          u'label', dtype='object')
+
+    >>> df.frame_position.values
+    array([0, 1, 2 ..., 0, 1, 2])
+
+    >>> var1 = [2, 1]
+    >>> var2 = [5, 1]
+
+    >>> new_frames = da.data_assembler_subsetter(
+                df, column=['frame_position'], index=["frame_index"],
+                values=var1,index_values=var2)
+
+    >>> new_frames
+
+    >>> frame_index    frame_position    frame_values    label
+                  5                 2              10        A
+                  5                 2             135        B
+                  5                 2              15        C
+                  1                 1             0.1        F
+                  1                 1             0.2        F
+                  1                 1             0.3        X
+
 
     """
     # Local global
@@ -932,19 +972,43 @@ def data_assembler_import_interaction_db(
     Parameters
     ----------
     filepath : str(object)
-    The 'filepath' is the relative or absolute path to the data base file.
-    Accepts only string entries.
+        The 'filepath' is the relative or absolute path to the data base file.
+        Accepts only string entries.
 
     delimiter : str('object')
-    The 'delimiter' parameter determines how the data base file should be
-    parsed. Default value for 'delimiter' is <<Tab>> separated.
+        The 'delimiter' parameter determines how the data base file should be
+        parsed. Default value for 'delimiter' is <<Tab>> separated.
 
     filter_type : list(object)
-    The 'filter_type' object list object that only accepts string entries.
-    The interaction database has 2 types of interaction either 'Genetic' or
-    'Physical'. Default value for 'filter_type' is null.
+        The 'filter_type' object list object that only accepts string entries.
+        The interaction database has 2 types of interaction either 'Genetic' or
+        'Physical'. Default value for 'filter_type' is null.
 
     row_skips : int(object)
+
+    Returns
+    -------
+    interaction_db : pandas.core.frame.DataFrame(object)
+        The interaction_db contains all known gene-gene interactions for
+        query gene.
+
+    Raises
+    ------
+    ValueError
+        If 'row_skip' input is not an integer.
+        If 'filter_type' input string is not 'Genetic' or 'Physical'.
+
+    OsError
+        If 'filepath' pointing to other than file.
+
+    TypeError
+        If 'filepath' or 'filter_type' input is other than string object.
+
+    See Also
+    --------
+    phen_o_links.dataset.dataset_filesave : For information about saving
+                                            return value 'interaction_db'
+                                            as csv-file
 
     """
 
@@ -960,6 +1024,8 @@ def data_assembler_import_interaction_db(
     if not isinstance(row_skips, int):
         text = ("Parameter 'row_skips' accepts only integers:"
                 "\n {0}").format(row_skips)
+        raise ValueError(text)
+
     if not isinstance(filepath, str):
         text = ("The parameter 'filepath' is not a"
                 "string type:\n {0}").format(type(filepath))
@@ -977,7 +1043,7 @@ def data_assembler_import_interaction_db(
     if not all([i in types for i in filter_type]):
         text = ("An invalid entry was given for 'filter_type':\n{0}\n "
                 "Please enter either 'Genetic' or "
-                "'Phsyical'.").format(filter_type)
+                "'Physical'.").format(filter_type)
         raise ValueError(text)
 
     # Importing database

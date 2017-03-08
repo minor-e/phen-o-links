@@ -212,7 +212,7 @@ def dataset_subsample_control_colonies(df, df_ctrl):
 
     df_ctrl : pandas.core.frame.DataFrame(object)
         The parameter called 'df_ctrl' is the return value
-        from data_set.dataset_getting_control_positions function.
+        from dataset.dataset_getting_control_positions function.
 
     Returns
     -------
@@ -226,7 +226,7 @@ def dataset_subsample_control_colonies(df, df_ctrl):
 
     See Also
     --------
-        data_set.dataset_getting_control_positions : for more information about input
+        dataset.dataset_getting_control_positions : for more information about input
                                                      'df_ctrl'.
 
     """
@@ -324,7 +324,7 @@ def dataset_check_by_Global_Std(df, columns=[], indexer=[], aleph=0.05):
 
     See Also
     --------
-    data_set.dataset_pick_columns : For more information about 'indexer' and
+    dataset.dataset_pick_columns : For more information about 'indexer' and
                                     'split' parameters.
 
     References
@@ -575,7 +575,7 @@ def dataset_filter_by_p_values_and_fold_change(
     ----------
     df : pandas.core.frame.DataFrame(object)
         Input frame with adjusted p-values, frame
-        returned from data_set.dataset_p_values_adjustmentdata_set.
+        returned from dataset.dataset_p_values_adjustmentdata_set.
 
     alpha : float(optional)
         The 'alpha' parameter determines the type I error it's set
@@ -1765,7 +1765,7 @@ def dataset_filter_within_a_range_of_value(df, filter_val, split="groupby"):
 
     See Also
     --------
-    data_set.dataset_pick_columns : For more information regarding "split"
+    dataset.dataset_pick_columns : For more information regarding "split"
                                     parameter.
     """
     try:
@@ -2667,7 +2667,7 @@ def dataset_create_coordinate_system(colony_format):
 
 
 def dataset_get_plate_peripheral(plate_coordinates):
-    """ Takes return output from data_set.dataset_create_coordinate_system and
+    """ Takes return output from dataset.dataset_create_coordinate_system and
     returns a pandas.core.frame.DataFrame(object) with border coordinates.
 
     Parameters
@@ -3792,7 +3792,7 @@ def dataset_outliers_id_line_distance(df, num, columns=[], indexer=[]):
 
     See Also
     --------
-    data_set.dataset_pick_columns : for more information about 'split'
+    dataset.dataset_pick_columns : for more information about 'split'
                                     parameter.
 
     Raises
@@ -3986,7 +3986,7 @@ def dataset_outliers_midpoint(df, percentage, num, columns=[], indexer=[]):
 
     See Also
     --------
-    data_set.dataset_pick_columns : For more information about 'split'
+    dataset.dataset_pick_columns : For more information about 'split'
                                     parameter.
 
     References
