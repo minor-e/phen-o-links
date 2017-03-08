@@ -601,6 +601,10 @@ def data_assembler_subsetter(
     for i in new_frame:
         frame = pd.concat(i, axis=0)
         new_frames.append(frame)
+    if isinstance(new_frames, list):
+        text = ("Return value 'new_frames' consist of {0} nested "
+                "element!").format(len(new_frames))
+        print UserWarning(text)
 
     return new_frames
 
