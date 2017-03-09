@@ -373,28 +373,31 @@ def data_assembler_subsetter(
         The parameter called 'df' is the concatenated object.
 
     index : list(optional)
-        The parameter called 'index' specifies how to order the 'df' input. If
-        parameter is left empty a function call is trigger to choice index. The
-        'index' parameter will order the data by acceding order and by it's
-        unique identifiers. The 'index' parameters has length of 1.
+        The parameter called 'index' specifies a column label, which is applied
+        for ordering of the 'df' input. If parameter is left empty a function
+        call is  triggered to choice an 'index' label. The 'index' parameter
+        will order the data in acceding order and unique identifiers within
+        column label. The 'index' parameters has length of 1.
 
     column : list(optional)
-        The parameter called 'column' specifies how the 'df' input is divided
-        or grouped. If 'column' is left empty a function call is trigger and
-        user is forced to choice a 'work columns'. The 'column' has length
-        of 1.
+        The parameter called 'column' is column label that specifies how
+        the 'df' input is sub-divided into further groups via the 'index'.
+        If 'column' is left empty a function call is triggered and user is
+        forced to choice a 'work columns'. The 'column' parameter has a
+        length of 1.
 
     locked_value : list(optional)
-        The parameter called 'locked_value' divides the 'df' according to the
+        The parameter called 'locked_value' divides the 'df' according to a
         specific value. The 'locked_value' must be a value present in the
-        'columns'.
+        'column'.
 
     values : list(optional)
         The parameter called 'values' is an alternative way of dividing the
         data in 'df'. In contrast to 'locked_value', which split data by a
-        repeated value. The 'values' parameter splits the 'df' data by its
-        given value and the ascending order which is given by the 'index'
-        input.
+        repeated value. The 'values' parameter splits the 'df' input by its
+        given value(s). The 'values' parameter works with both 'index' and
+        'index_values'. If 'index_values' left empty the 'values' parameter
+        must have the same length as 'index'.
 
     index_values : list(optional)
         The 'index_values' parameter works only with 'values' parameter and
@@ -419,8 +422,8 @@ def data_assembler_subsetter(
         given 'index'.
         If length in 'values' differed for given 'index_values'.
     KeyError
-        If 'index' or 'column' labels given are missing 'values' in either or
-        both parameters.
+        If 'index_values' or 'values' given are missing or invalid in for
+        labels in 'index' and 'column'.
 
     See Also
     --------
@@ -467,8 +470,6 @@ def data_assembler_subsetter(
                   1                 1             0.1        F
                   1                 1             0.2        F
                   1                 1             0.3        X
-
-
     """
     # Local global
     new_frames = []
