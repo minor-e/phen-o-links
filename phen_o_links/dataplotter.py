@@ -1628,8 +1628,8 @@ def dataplotter_scatter_x_y_plot(
         The "sub_limit" parameters is used to set sub limit for figure.
         Recommend to be of negative value.
 
-    percentage : float(optional)
-        the 'percentage' accepts floats values between 0.0-1.0
+    percentage : float
+        The 'percentage' accepts floats values between 0.0-1.0
         recommend value is to set percentage to 0.05.
 
     number : int (optional)
@@ -1655,7 +1655,7 @@ def dataplotter_scatter_x_y_plot(
     sub_frame : list(optional)
         The 'sub_frame' parameter has 2 valid type inputs in the following
         order 'sub_frame' = [df(object), str(object)]
-        If str(object) is set to "Color_code" and function for coloring
+        If str(object) is set to "Colorcode" and function for coloring
         subframe is activated.If sub_frame option is in use, the 'func_call'
         is disable.
 
@@ -1763,12 +1763,11 @@ def dataplotter_scatter_x_y_plot(
     m, l, ld, dl, d = dataplotter_colorscheme(
         main=['grayscale2'], hues=['lightdark', 'darklight'])
     m2, l2, ld2, dl2, d2 = dataplotter_colorscheme(
-        main=['green'], hues=['lightdark', 'darklight'])
+        main=['blue'], hues=['lightdark', 'darklight'])
     # Handling returns
     gray = m + l + ld + dl + d
     gray = gray[1:]
     blue = m1 + l1 + ld1 + dl1 + d1
-    green = m2 + l2 + ld2 + dl2 + d2
 
     # Picking colors
     color = list(np.random.choice(blue, 1))
@@ -1833,7 +1832,7 @@ def dataplotter_scatter_x_y_plot(
 
     if sum(func_call) == 0 and not sub_frame:
         # Plotting raw data points
-        ax.scatter(x, y, c=green[0], marker='o', s=markersize,
+        ax.scatter(x, y, c=blue[0], marker='o', s=markersize,
                    alpha=trn, label=r"{%s}" % (text_latex[3]), lw=0)
 
     if sum(func_call) > 0:
