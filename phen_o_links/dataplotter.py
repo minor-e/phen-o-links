@@ -1605,7 +1605,7 @@ def dataplotter_bar_plot_simple(
 
 def dataplotter_scatter_x_y_plot(
         df, filter_val, sub_limit, percentage, number=5,
-        extra_features=[False, False, False, False, True],
+        extra_features=[False, False, False, False, True, False],
         func_call=[False, False, False], sub_frame=[],
         markersize=20, fig_title='Untitled',
         x_title='Untitled', y_title='Untitled', datapoints='Untitled',
@@ -1642,9 +1642,9 @@ def dataplotter_scatter_x_y_plot(
         The parameter adds extra features upon rendered scatter figure.
         The order in 'extra_features' have different properties
         'extra_features' = ['Identity Line', 'Grid Line','Linear Regression',
-        'Frame around figure legend','Shadow behind figure legend']
-        The default setting is all 'extra_features' options to False
-        except for 'Shadow behind figure legend'.
+        'Frame around figure legend','Shadow behind figure legend', 'Special
+        Grid Line']. The default setting is all 'extra_features' options to
+        False except for 'Shadow behind figure legend'.
 
     func_call : list (optional)
         The 'func_call' accepts only boolean values. The item order calls
@@ -1757,6 +1757,9 @@ def dataplotter_scatter_x_y_plot(
     # Fixing text
     dataplotter_fixing_textformat()
 
+    # Local
+    df_grey =[]
+
     # Getting colors
     m1, l1, ld1, dl1, d1 = dataplotter_colorscheme(
         main=['colorblind'], hues=['lightdark', 'darklight'])
@@ -1767,7 +1770,7 @@ def dataplotter_scatter_x_y_plot(
     # Handling returns
     gray = m + l + ld + dl + d
     gray = gray[1:]
-    blue = m1 + l1 + ld1 + dl1 + d1
+    blue = m2 + l2 + ld2 + dl2 + d2
 
     # Picking colors
     color = list(np.random.choice(blue, 1))
@@ -1792,6 +1795,8 @@ def dataplotter_scatter_x_y_plot(
 
     # Getting regression line
     slope, intercept, r_value, p_value, std_err = ds.dataset_regline(x, y)
+
+    x = np.hstack(((filter_val,sub_limit),x))
 
     # Setting x and y for identity line plot
     x1 = np.linspace(sub_limit, filter_val, num=3)
@@ -1909,15 +1914,15 @@ def dataplotter_scatter_x_y_plot(
                 return
 
         # Slicing away 'outliers' from main pandas frame.
-        df_grey2 = df_work2[~(df_work2[indexer[0]].isin(subset2[indexer[0]]))]
+        df_grey = df_work2[~(df_work2[indexer[0]].isin(subset2[indexer[0]]))]
 
         # Slicing for 'outliers' from main pandas frame.
         df_outlier2 = df_work2[
             (df_work2[indexer[0]].isin(subset2[indexer[0]]))]
 
         # Plotting insignificant points in scatter figure.
-        ax.scatter(df_grey2[columns[0]].values,
-                   df_grey2[columns[1]].values, c=color2, marker='o',
+        ax.scatter(df_grey[columns[0]].values,
+                   df_grey[columns[1]].values, c=color2, marker='o',
                    s=markersize, lw=0,
                    alpha=trn, label=r"{%s}" % (text_latex[3]))
 
@@ -1951,7 +1956,6 @@ def dataplotter_scatter_x_y_plot(
             left_c = t_db.index.tolist()
             df_outlier3['Outlier_c'] = df_outlier3.Color_coded.isin(left_c)
             df_outlier2 = df_outlier3[df_outlier3.Outlier_c == True]
-
 
         if a_txt:
         # Points are getting names.
@@ -1994,6 +1998,35 @@ def dataplotter_scatter_x_y_plot(
                 + r"$%3.7s$" % (std_err),
                 fontsize=fig_fontsize[2], transform=ax.transAxes)
 
+    if extra_features[5]:
+        text_latex[4] = r"Regression\ Line\ Special"
+        # Getting values
+        x, y = df_grey[columns[0]].values, df_grey[columns[1]].values
+        # Getting regression line
+        slope, intercept, r_value, p_value, std_err = ds.dataset_regline(x, y)
+        x = np.hstack(((filter_val,sub_limit),x))
+
+        #Linear regression line
+        y_reg = slope * x + intercept
+
+        # Plotting regression line
+        ax.plot(x, y_reg, '-.k', linewidth=2, alpha=0.375,
+                label=r"\textbf{%s}" % (text_latex[4]))
+
+        # Text formatting for equation and correlations
+        ax.text(0.5, 0.90,
+                r"\textit{%s}" % (text_latex[4] + r'$\ r^{2}$' + " = ")
+                + r"$%3.7s$" % (r_value ** 2),
+                fontsize=fig_fontsize[2], transform=ax.transAxes)
+        ax.text(0.5, 0.875,
+                r"\textit{%s}" % (text_latex[4] + " equation\  = ")
+                + r"$%3.7s x + %3.7s$" % (slope, intercept),
+                fontsize=fig_fontsize[2], transform=ax.transAxes)
+
+        ax.text(0.5, 0.85,
+                r"\textit{%s}" % (text_latex[4] + r"$\ \sigma_{est}$" + " = ")
+                + r"$%3.7s$" % (std_err),
+                fontsize=fig_fontsize[2], transform=ax.transAxes)
     # Legend formatting
     ax.legend(loc='upper left', shadow=extra_features[4],
               frameon=extra_features[3], fontsize=fig_fontsize[2])
