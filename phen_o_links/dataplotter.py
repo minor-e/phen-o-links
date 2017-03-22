@@ -1228,7 +1228,7 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     t_table = t_table.sort_values(ascending=False)
     color_columns = t_table.index.tolist()
     color_columns = [
-        i.replace('_', ' ') for i in color_columns if i.count('_')]
+        i.replace('_', ' ') for i in color_columns]
     color_columns = dataplotter_textspacemanger(color_columns)
     df2['Freq'] = df2.groupby('Nr_True')['Nr_True'].transform('count')
     df2 = df2.sort_values(by='Freq', ascending=False)
@@ -1605,7 +1605,7 @@ def dataplotter_bar_plot_simple(
 
 def dataplotter_scatter_x_y_plot(
         df, filter_val, sub_limit, percentage, number=5,
-        extra_features=[False, False, False, False, True],
+        extra_features=[False, False, False, False, True, False],
         func_call=[False, False, False], sub_frame=[],
         markersize=20, fig_title='Untitled',
         x_title='Untitled', y_title='Untitled', datapoints='Untitled',
@@ -1628,8 +1628,8 @@ def dataplotter_scatter_x_y_plot(
         The "sub_limit" parameters is used to set sub limit for figure.
         Recommend to be of negative value.
 
-    percentage : float(optional)
-        the 'percentage' accepts floats values between 0.0-1.0
+    percentage : float
+        The 'percentage' accepts floats values between 0.0-1.0
         recommend value is to set percentage to 0.05.
 
     number : int (optional)
@@ -1642,9 +1642,11 @@ def dataplotter_scatter_x_y_plot(
         The parameter adds extra features upon rendered scatter figure.
         The order in 'extra_features' have different properties
         'extra_features' = ['Identity Line', 'Grid Line','Linear Regression',
-        'Frame around figure legend','Shadow behind figure legend']
-        The default setting is all 'extra_features' options to False
-        except for 'Shadow behind figure legend'.
+        'Frame around figure legend','Shadow behind figure legend', 'Special
+        Grid Line']. The 'Special Grid Line' renders a regression line with the
+        values that are colored gray in Figure. The default setting is all
+        'extra_features' options to False except for 'Shadow behind figure
+        legend'.
 
     func_call : list (optional)
         The 'func_call' accepts only boolean values. The item order calls
@@ -1655,7 +1657,7 @@ def dataplotter_scatter_x_y_plot(
     sub_frame : list(optional)
         The 'sub_frame' parameter has 2 valid type inputs in the following
         order 'sub_frame' = [df(object), str(object)]
-        If str(object) is set to "Color_code" and function for coloring
+        If str(object) is set to "Colorcode" and function for coloring
         subframe is activated.If sub_frame option is in use, the 'func_call'
         is disable.
 
@@ -1753,9 +1755,69 @@ def dataplotter_scatter_x_y_plot(
     phen_o_links.dataset.dataset_regline : For more information about
                                            regression line.
 
+    Examples
+    --------
+    >>> # Applying Colorcoded keyword in sub_frame parameter
+    >>> import pandas as pd
+    >>> import phen_o_links.dataplotter as dp
+
+    >>> # Importing pandas data frame
+    >>> df = pd.read_csv('file.csv', delimiter='\\t')
+
+    >>> # Columns present in df
+    >>> df.columns
+    Index([u'Unique_Label', u'X_values', u'Y_values', u'Test', u'Test2',
+          u'Test3'], dtype='object')
+
+    >>> df.shape
+    (150, 6)
+
+    >>> # Top five values
+    >>> df.head(5)
+    Unique_Label    X_values    Y_values    Test    Test2   Test3
+               A           1          10    True    False   False
+               B           2          11    True    False   False
+               C           4          12    True    True    False
+               D           8          13    True    True    False
+               E          16          14    True    True    True
+
+    >>> # Creating sub frame called sub
+    sub = df[df.Test==True]
+
+    >>> # Creating scatter plott
+    fig1, ax1 = dp.dataplotter_scatter_x_y_plot(
+        df,20,-20, 0.05 ,sub_frame=[sub, 'Colorcoded'])
+
+    >>> # Columns in df prompt
+    {0:'Unique_Label'
+     1:'X_values'
+     2:'Y_values'
+     3:'Test'
+     4:'Test2'
+     5:'Test3'}
+
+    >>> # User picked labels
+    Pick columns to work with via the numbers e.g. 1,2,3 etc
+        : 1,2,
+    Pick a indexer or groupby for data frame here
+        :0,
+
+    >>> # Picking columns to colorcoded sub frame values
+    Entering 'colorcode' mode!
+    Pick columns to work with via the numbers e.g. 1,2,3 etc
+        : 3,4,5,
+    Pick a indexer or groupby for data frame here
+        :0,
+
+    >>> # Saving figure as svg and pdf formats
+    dp.dataplotter_save_figure(fig=fig1, filename='test',
+                               save_as=['svg', 'pdf'])
     """
     # Fixing text
     dataplotter_fixing_textformat()
+
+    # Local
+    df_grey =[]
 
     # Getting colors
     m1, l1, ld1, dl1, d1 = dataplotter_colorscheme(
@@ -1763,12 +1825,11 @@ def dataplotter_scatter_x_y_plot(
     m, l, ld, dl, d = dataplotter_colorscheme(
         main=['grayscale2'], hues=['lightdark', 'darklight'])
     m2, l2, ld2, dl2, d2 = dataplotter_colorscheme(
-        main=['green'], hues=['lightdark', 'darklight'])
+        main=['blue'], hues=['lightdark', 'darklight'])
     # Handling returns
     gray = m + l + ld + dl + d
     gray = gray[1:]
-    blue = m1 + l1 + ld1 + dl1 + d1
-    green = m2 + l2 + ld2 + dl2 + d2
+    blue = m2 + l2 + ld2 + dl2 + d2
 
     # Picking colors
     color = list(np.random.choice(blue, 1))
@@ -1793,6 +1854,8 @@ def dataplotter_scatter_x_y_plot(
 
     # Getting regression line
     slope, intercept, r_value, p_value, std_err = ds.dataset_regline(x, y)
+
+    x = np.hstack(((filter_val,sub_limit),x))
 
     # Setting x and y for identity line plot
     x1 = np.linspace(sub_limit, filter_val, num=3)
@@ -1833,7 +1896,7 @@ def dataplotter_scatter_x_y_plot(
 
     if sum(func_call) == 0 and not sub_frame:
         # Plotting raw data points
-        ax.scatter(x, y, c=green[0], marker='o', s=markersize,
+        ax.scatter(x, y, c=blue[0], marker='o', s=markersize,
                    alpha=trn, label=r"{%s}" % (text_latex[3]), lw=0)
 
     if sum(func_call) > 0:
@@ -1910,15 +1973,15 @@ def dataplotter_scatter_x_y_plot(
                 return
 
         # Slicing away 'outliers' from main pandas frame.
-        df_grey2 = df_work2[~(df_work2[indexer[0]].isin(subset2[indexer[0]]))]
+        df_grey = df_work2[~(df_work2[indexer[0]].isin(subset2[indexer[0]]))]
 
         # Slicing for 'outliers' from main pandas frame.
         df_outlier2 = df_work2[
             (df_work2[indexer[0]].isin(subset2[indexer[0]]))]
 
         # Plotting insignificant points in scatter figure.
-        ax.scatter(df_grey2[columns[0]].values,
-                   df_grey2[columns[1]].values, c=color2, marker='o',
+        ax.scatter(df_grey[columns[0]].values,
+                   df_grey[columns[1]].values, c=color2, marker='o',
                    s=markersize, lw=0,
                    alpha=trn, label=r"{%s}" % (text_latex[3]))
 
@@ -1952,7 +2015,6 @@ def dataplotter_scatter_x_y_plot(
             left_c = t_db.index.tolist()
             df_outlier3['Outlier_c'] = df_outlier3.Color_coded.isin(left_c)
             df_outlier2 = df_outlier3[df_outlier3.Outlier_c == True]
-
 
         if a_txt:
         # Points are getting names.
@@ -1995,6 +2057,35 @@ def dataplotter_scatter_x_y_plot(
                 + r"$%3.7s$" % (std_err),
                 fontsize=fig_fontsize[2], transform=ax.transAxes)
 
+    if extra_features[5]:
+        text_latex[4] = r"Regression\ Line\ Special"
+        # Getting values
+        x, y = df_grey[columns[0]].values, df_grey[columns[1]].values
+        # Getting regression line
+        slope, intercept, r_value, p_value, std_err = ds.dataset_regline(x, y)
+        x = np.hstack(((filter_val,sub_limit),x))
+
+        #Linear regression line
+        y_reg = slope * x + intercept
+
+        # Plotting regression line
+        ax.plot(x, y_reg, '-.k', linewidth=2, alpha=0.375,
+                label=r"\textbf{%s}" % (text_latex[4]))
+
+        # Text formatting for equation and correlations
+        ax.text(0.5, 0.90,
+                r"\textit{%s}" % (text_latex[4] + r'$\ r^{2}$' + " = ")
+                + r"$%3.7s$" % (r_value ** 2),
+                fontsize=fig_fontsize[2], transform=ax.transAxes)
+        ax.text(0.5, 0.875,
+                r"\textit{%s}" % (text_latex[4] + " equation\  = ")
+                + r"$%3.7s x + %3.7s$" % (slope, intercept),
+                fontsize=fig_fontsize[2], transform=ax.transAxes)
+
+        ax.text(0.5, 0.85,
+                r"\textit{%s}" % (text_latex[4] + r"$\ \sigma_{est}$" + " = ")
+                + r"$%3.7s$" % (std_err),
+                fontsize=fig_fontsize[2], transform=ax.transAxes)
     # Legend formatting
     ax.legend(loc='upper left', shadow=extra_features[4],
               frameon=extra_features[3], fontsize=fig_fontsize[2])
