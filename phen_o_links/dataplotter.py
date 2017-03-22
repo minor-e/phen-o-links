@@ -1228,7 +1228,7 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
     t_table = t_table.sort_values(ascending=False)
     color_columns = t_table.index.tolist()
     color_columns = [
-        i.replace('_', ' ') for i in color_columns if i.count('_')]
+        i.replace('_', ' ') for i in color_columns]
     color_columns = dataplotter_textspacemanger(color_columns)
     df2['Freq'] = df2.groupby('Nr_True')['Nr_True'].transform('count')
     df2 = df2.sort_values(by='Freq', ascending=False)
@@ -1643,8 +1643,10 @@ def dataplotter_scatter_x_y_plot(
         The order in 'extra_features' have different properties
         'extra_features' = ['Identity Line', 'Grid Line','Linear Regression',
         'Frame around figure legend','Shadow behind figure legend', 'Special
-        Grid Line']. The default setting is all 'extra_features' options to
-        False except for 'Shadow behind figure legend'.
+        Grid Line']. The 'Special Grid Line' renders a regression line with the
+        values that are colored gray in Figure. The default setting is all
+        'extra_features' options to False except for 'Shadow behind figure
+        legend'.
 
     func_call : list (optional)
         The 'func_call' accepts only boolean values. The item order calls
@@ -1752,6 +1754,74 @@ def dataplotter_scatter_x_y_plot(
 
     phen_o_links.dataset.dataset_regline : For more information about
                                            regression line.
+
+    Examples
+    --------
+    >>> # Applying Colorcoded keyword in sub_frame parameter
+    >>> import pandas as pd
+    >>> import phen_o_links.dataplotter as dp
+
+    >>> # Importing pandas data frame
+    >>> df = pd.read_csv('file.csv', delimiter='\\t')
+
+    >>> # Columns present in df
+    >>> df.columns
+    Index([u'Unique_Label', u'X_values', u'Y_values', u'Test', u'Test2',
+          u'Test3'], dtype='object')
+
+    >>> df.shape
+    (150, 6)
+
+    >>> # Top five values
+    >>> df.head(5)
+    Unique_Label    X_values    Y_values    Test    Test2   Test3
+               A           1          10    True    False   False
+               B           2          11    True    False   False
+               C           4          12    True    True    False
+               D           8          13    True    True    False
+               E          16          14    True    True    True
+
+    >>> # Creating sub frame called sub
+    sub = df[df.Test==True]
+
+    >>> # Creating scatter plott
+    fig1, ax1 = dp.dataplotter_scatter_x_y_plot(
+        df,20,-20, 0.05 ,sub_frame=[sub, 'Colorcoded'])
+
+    >>> # Columns in df prompt
+    {0:'Unique_Label'
+     1:'X_values'
+     2:'Y_values'
+     3:'Test'
+     4:'Test2'
+     5:'Test3'}
+
+    >>> # User picked labels
+    Pick columns to work with via the numbers e.g. 1,2,3 etc
+        : 1,2,
+    Pick a indexer or groupby for data frame here
+        :0,
+
+    >>> # Picking columns to colorcoded sub frame values
+    Entering 'colorcode' mode!
+    Pick columns to work with via the numbers e.g. 1,2,3 etc
+        : 3,4,5,
+    Pick a indexer or groupby for data frame here
+        :0,
+
+    >>> # Saving figure as svg and pdf formats
+    dp.dataplotter_save_figure(fig=fig1, filename='test',
+                               save_as=['svg', 'pdf'])
+
+
+
+
+
+
+
+
+
+
 
     """
     # Fixing text
