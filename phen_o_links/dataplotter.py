@@ -1812,17 +1812,6 @@ def dataplotter_scatter_x_y_plot(
     >>> # Saving figure as svg and pdf formats
     dp.dataplotter_save_figure(fig=fig1, filename='test',
                                save_as=['svg', 'pdf'])
-
-
-
-
-
-
-
-
-
-
-
     """
     # Fixing text
     dataplotter_fixing_textformat()
