@@ -1816,7 +1816,7 @@ def dataplotter_scatter_x_y_plot(
     # Fixing text
     dataplotter_fixing_textformat()
 
-    # Local
+    # Local Global
     df_grey =[]
 
     # Getting colors
@@ -1826,6 +1826,7 @@ def dataplotter_scatter_x_y_plot(
         main=['grayscale2'], hues=['lightdark', 'darklight'])
     m2, l2, ld2, dl2, d2 = dataplotter_colorscheme(
         main=['blue'], hues=['lightdark', 'darklight'])
+
     # Handling returns
     gray = m + l + ld + dl + d
     gray = gray[1:]
@@ -1845,6 +1846,7 @@ def dataplotter_scatter_x_y_plot(
     # Creating and subset and filtering data frame
     df_w, df_work2, x, y, columns = ds.dataset_filter_within_a_range_of_value(
         df_work1, filter_val)
+
     # Deleting unwanted return.
     del df_w
 
@@ -1857,6 +1859,13 @@ def dataplotter_scatter_x_y_plot(
 
     x = np.hstack(((filter_val,sub_limit),x))
 
+    # Used for plotting regression line
+    line = slope * x + intercept
+
+    # Creating nicer line for regression
+    x_reg = x
+    y_reg = line
+
     # Setting x and y for identity line plot
     x1 = np.linspace(sub_limit, filter_val, num=3)
     y1 = np.linspace(sub_limit, filter_val, num=3)
@@ -1866,13 +1875,6 @@ def dataplotter_scatter_x_y_plot(
 
     # Creating axes
     ax = fig1.add_subplot(111, aspect='equal')
-
-    # Used for plotting regression line
-    line = slope * x + intercept
-
-    # Creating nicer line for regression
-    x_reg = x
-    y_reg = line
 
     # Text formatting
     text_fig = [fig_title, x_title, y_title, datapoints, regtext]
