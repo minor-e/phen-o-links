@@ -1,5 +1,5 @@
 Phen-o-liniks
-============
+=============
 
 The tutorial assumes that the system in use is linux based or mac and
 that the user has some previous knowledge about terminal
