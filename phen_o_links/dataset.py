@@ -4300,13 +4300,12 @@ def dataset_filtering(
     print "Columns to work with:" + "\n", columns_work
 
     # Check data points
-    raw_data = float(len(df_work1[grouper[0]])) * 1.0
+    raw_data = float(len(df_work1[grouper[0]]))
 
     # Filtering data frame on columns_work
     df2 = df_work1.replace(
         [np.inf, -np.inf], np.nan).dropna(
-            subset=[columns_work[i] for i in range(
-                len(columns_work))], how=filtertype)
+            subset=columns_work, how=filtertype)
 
     # Creates csv-file for backup
     dataset_filesave(df2, filename)
