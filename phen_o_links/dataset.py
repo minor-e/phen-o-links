@@ -4344,8 +4344,8 @@ def dataset_stats_values(df, split='groupby', filename='stats_values', ddof=1):
     cols_picked, grouper = dataset_pick_columns(df_work1, split)
 
     # Making new dataframe
-    df2 = df_work1[cols_picked]
-    df3 = df2.groupby([grouper[i] for i in range(len(grouper))])
+    df2 = df_work1[cols_picked + grouper]
+    df3 = df2.groupby(grouper)
     df3 = df3.agg([np.mean, np.std, np.var, np.median], ddof=ddof)
 
     # Resets index
