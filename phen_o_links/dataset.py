@@ -3699,57 +3699,10 @@ def dataset_pairwise_distance_points(df_work, workcolumns):
     df = dataset_copy_frame(df_work)
 
     # List for appending points distances
-    distance = []
-
-    if len(df) < 5:
-        length_x_y = np.random.random(len(df))
-        [distance.append((i, 0, 0)) for i in length_x_y]
-        return distance
-    # Data frame length
-    length = range(0, len(df), 2)
-
-    for i in length:
-
-        # Adding coordinates
-        y = i + 1
-        y2 = y + 1
-
-        # Logic Circuit to avoid indexing error
-        if y2 < length[-1]:
-            y3 = y + 1
-        if y < len(df):
-            b = i + 1
-        if y + 1 > len(df):
-            y = len(df) - 1
-            i = y - 1
-
-        # Transpose data frame and slice by 3 objects
-        dfT = df.iloc[[i, y]][np.arange(3)].T
-        dfT2 = df.iloc[[b, y3]][np.arange(3)].T
-
-        # Distance calculator
-        pair = (np.sqrt(
-            (dfT.loc[[workcolumns[0]]].values[0][1] -
-                dfT.loc[[workcolumns[0]]].values[0][0]) ** 2 +
-            (dfT.loc[[workcolumns[1]]].values[0][1] -
-                dfT.loc[[workcolumns[1]]].values[0][0]) ** 2))
-        between = (np.sqrt(
-            (dfT2.loc[[workcolumns[0]]].values[0][1] -
-                dfT2.loc[[workcolumns[0]]].values[0][0]) ** 2 +
-            (dfT2.loc[[workcolumns[1]]].values[0][1] -
-                dfT2.loc[[workcolumns[1]]].values[0][0]) ** 2))
-
-        # Adding distance to list
-        distance.append((pair, i, y))
-        distance.append((between, b, y3))
-
-    # Deleting the half point between outliers
-    del distance[(len(df) / 2) - 1]
-
-    # Modifying the list
-    distance = distance[:-1]
-    distance.insert(0, (0, 0, 0))
-    distance.insert(len(distance), (0, 0, 0))
+    distance = [
+        np.linalg.norm(
+            df[workcolumns[1]].values[i]-df[workcolumns[0]].values[i])
+        for i in range(len(df))]
 
     # Returning list with distances
     return distance
@@ -4344,8 +4297,8 @@ def dataset_stats_values(df, split='groupby', filename='stats_values', ddof=1):
     cols_picked, grouper = dataset_pick_columns(df_work1, split)
 
     # Making new dataframe
-    df2 = df_work1[cols_picked]
-    df3 = df2.groupby([grouper[i] for i in range(len(grouper))])
+    df2 = df_work1[cols_picked + grouper]
+    df3 = df2.groupby(grouper)
     df3 = df3.agg([np.mean, np.std, np.var, np.median], ddof=ddof)
 
     # Resets index

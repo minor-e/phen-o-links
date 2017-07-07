@@ -793,6 +793,13 @@ def dataplotter_text_annotation_scatter(
     arrow_args = dict(arrowstyle='-', connectionstyle='arc3,rad=0',
                       color='black')
     columns_table = df_work1.columns.tolist()
+    fc_dict = {k:color for k,v in enumerate(df_work1[indexer].values)}
+
+
+    if "Color_coded" in df_work1.columns.tolist():
+        new_fc_dict = {
+            k:v for k,v in enumerate(df_work1.Color_coded.values)}
+        fc_dict.update(new_fc_dict)
 
     # Try and test
     try:
@@ -813,9 +820,10 @@ def dataplotter_text_annotation_scatter(
 
     labels = df_work1[indexer[0]].values
     for i, txt in enumerate(labels):
+        bbox_args.update({"fc":fc_dict.get(i)})
         x = range(-40, -20, 7) + range(20, 40, 7)
         y = range(-40, -20, 3) + range(20, 41, 5)
-        if d[i][0] < 5:
+        if d[i] < 5:
             x = np.random.choice(x)
             y = np.random.choice(y)
         else:
@@ -1219,17 +1227,15 @@ def dataplotter_color_code_subframe(df, color_columns=[]):
         df2.Nr_True.unique()[i]:color_theme[i] for i in range(
             len(df2.Nr_True.unique()))}
 
+    # Adding columns to colorcoded frame
     df2 = ds.dataset_add_column_by_dict(df2, color_dict, Grouper="Nr_True",
                                         new_col="Color_coded")
-    #del df2['Nr_True']
+    df2.loc[:,"Labels"] = [
+        columns_dict.get(i).replace("_"," ") for i in df2.Nr_True.values]
+    latex_fixed_labels = df2.Labels.str.replace(" ","\ ")
+    df2.Labels =latex_fixed_labels
 
     # Ordering labels to match color_coding
-    t_table = df2[color_columns].sum()
-    t_table = t_table.sort_values(ascending=False)
-    color_columns = t_table.index.tolist()
-    color_columns = [
-        i.replace('_', ' ') for i in color_columns]
-    color_columns = dataplotter_textspacemanger(color_columns)
     df2['Freq'] = df2.groupby('Nr_True')['Nr_True'].transform('count')
     df2 = df2.sort_values(by='Freq', ascending=False)
 
@@ -2006,7 +2012,9 @@ def dataplotter_scatter_x_y_plot(
                     gr.get_group(m_color[i])[columns[0]].values,
                     gr.get_group(m_color[i])[columns[1]].values,
                     c=m_color[i], marker='o', s=markersize, lw=0,
-                    alpha=trn2, label=r"{%s}" % (label_colors[i]))
+                    alpha=trn2, label=r"{%s}" % (
+                        gr.get_group(
+                            m_color[i])["Labels"].unique().astype(str)[0]))
 
         if c_txt:
             print "Color coded Annotations for groups size of n <= 30!"
@@ -2029,7 +2037,7 @@ def dataplotter_scatter_x_y_plot(
 
     if extra_features[0]:
         # Plotting identity line
-        ax.plot(x1, y1, 'k', linewidth=2, alpha=0.5,
+        ax.plot(x1, y1, 'k', linewidth=2, alpha=0.75,
                 label=r"\textbf{Identity\ Line}")
 
     if extra_features[1]:
@@ -2041,7 +2049,7 @@ def dataplotter_scatter_x_y_plot(
     if extra_features[2]:
 
         # Plotting regression line
-        ax.plot(x_reg, y_reg, '--k', linewidth=2, alpha=0.375,
+        ax.plot(x_reg, y_reg, '--k', linewidth=2, alpha=0.5,
                 label=r"\textbf{%s}" % (text_latex[4]))
 
         # Text formatting for equation and correlations
