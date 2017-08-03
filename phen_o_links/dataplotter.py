@@ -3095,7 +3095,7 @@ def dataplotter_hierarchical_clustered_heatmap(
     return fig1, df_cluster
 
 
-def dataplotter_kde_plot(
+def dataplotter_kde_plots(
         df, filename="untitle", index=[], columns=[],
         figlabels=["Title", "X label", "Y label"],
         datalabels=["Data 1", "Data 2"], x_limits=(-1, 1)):
@@ -3535,6 +3535,155 @@ def dataplotter_go_enrichment_plot(
 
     return fig1, ax1
 
+
+def dataplotter_kde_plot(
+    df, columns=[], figlabels=["Title", "X Label", "Y Label"],
+    datalabels=[], x_limits=(-1.0,1.0), grid_lines="off"):
+    """ The function takes columns labels as inputs and returns the kernel
+    density plot over the values located in column label(s). The function is
+    limited to 20 kde-lines in a plot.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame(object)
+        The 'df' parameter is the given pandas DataFrame (object)
+
+    columns : list(object)
+        The parameter called 'columns' specify data input from
+        the 'df' input via the columns labels picked.
+
+    figlabels : list(object)
+        The parameter called 'figlabels' is list object with the
+        length of 3 items. The order of the items determines different
+        features. 1th item is title, 2nd item is x-label, 3rd item is y-label.
+
+    datalabels : list(object)
+        The parameter called 'datalabels' are the of legend labels
+        of the data in input order.
+
+    x_limits : tuple(object)
+        The parameter called 'x_limits' determines the x-axis range
+        form x-max to x-minimum value.
+
+    grid_lines : str(optional)
+        The parameter called 'grid_lines' renders grid lines in
+        figure. The default value for parameter is set to 'off',
+        to renders grid lines in figure pass parameter with
+        the value of 'on'.
+
+    Returns
+    -------
+    fig1, ax1 : figure(objects)
+        The function returns two matplotlib object that contains
+        the figure (fig1) and the axes (ax1).
+
+    Raises
+    ------
+    ValueError
+        If 'columns' items not found in main 'df'.
+
+    See Also
+    --------
+    phen_o_links.dataset.dataset_pick_columns : For more information about
+                                                function called when 'index'
+                                                and 'columns' is empty.
+
+    dataplotter_colorscheme : For information about color pallet.
+
+    dataplotter_save_figure : For information on how to save figure with return
+                              values 'fig1' and 'ax1'.
+
+    """
+    # Global Local
+    line_styles = ["-", "--", "-."]
+    fontsizes = [12, 10, 8]
+
+    # Copying df input
+    df1 = ds.dataset_copy_frame(df)
+
+    # Function call for proper fonts
+    dataplotter_fixing_textformat()
+
+    # Fixing latex space format problem
+    figtext = dataplotter_textspacemanger(figlabels)
+    figtext[2] = "Kernel\\ Density\\ Estimation"
+    datatext = dataplotter_textspacemanger(datalabels)
+
+    # Function call
+    if not columns:
+        columns, index = ds.dataset_pick_columns(df1, split="groupby")
+        del index
+
+    if  columns:
+        df1_columns = df1.columns.tolist()
+        test = [i for i in columns if i not in df1_columns]
+        if test:
+            text = ("Items given in 'columns' are not found "
+                    "User input {0}").format(var)
+            raise ValueError(text)
+
+    # Colorscheme picked
+    m, l, l_d, d_l, d = dataplotter_colorscheme(
+        main=["green","red", "blue", "yellow"],
+        hues=["light","lightdark","darklight","dark"])
+
+    # Creating list of colors
+    c_list = m + l + l_d + d_l + d
+
+    # Creating dict of colors
+    c_dict = {i:x for i, x in enumerate(c_list)}
+
+    # Fixing data labels
+    leg_labels = dataplotter_textspacemanger(columns, pattern="_")
+
+    leg_labels_dict = {i:x for i, x in enumerate(leg_labels)}
+    leg_update_dict = {i:x for i, x in enumerate(datalabels)}
+
+    # Updating values for legend labels
+    leg_labels_dict.update(leg_update_dict)
+    leg_labels = leg_labels_dict.copy()
+
+    # Plotting figure
+    fig1 = plt.figure(figsize=(8, 6))
+    ax1 = fig1.add_subplot(111)
+
+    # Removing ticks and spines!
+    dataplotter_x_y_tick_remover(ax1)
+    dataplotter_spines_remover(
+        ax1, all_axis=False, top=False, bottom=True,
+        right=False, left=True)
+
+    # Median of values
+    median = df1[columns].apply(np.median)
+
+    for i in range(len(columns)):
+        line_type = i%3
+        df1[columns[i]].plot(
+            kind="kde", label=leg_labels.get(i), color=c_dict.get(i),
+            linestyle=line_styles[line_type], ax=ax1, lw=2.50)
+
+        # Renders median values as vertical lines
+        ax1.axvline(
+            x=median.values[i], label=leg_labels.get(i) + r" median",
+            color=c_dict.get(i), ls=line_styles[line_type], lw=1.50)
+
+    # Fixing ticks
+    plt.xlim(x_limits)
+    y_end, y_start = ax1.get_ylim()
+    y_ticks = np.round(
+        np.linspace(np.round(y_end), np.ceil(y_start), 12), decimals=1)
+    ax1.yaxis.set_ticks(y_ticks)
+    ax1.grid(grid_lines)
+
+    # Adding legend
+    ax1.legend(frameon=False, fontsize=fontsizes[2])
+    ax1.set_ylabel(r"\textbf{%s}" % (figtext[2]), fontsize=fontsizes[1])
+    ax1.set_xlabel(r"\textbf{%s}" % (figtext[1]), fontsize=fontsizes[1])
+    ax1.set_title(r"\textbf{%s}" % (figtext[0]), fontsize=fontsizes[0])
+
+    # Rendering figure and returning matplotlib objects
+    plt.show()
+    return fig1, ax1
 
 
 if __name__ == "__main__":
