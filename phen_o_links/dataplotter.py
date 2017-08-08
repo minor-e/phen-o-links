@@ -1617,7 +1617,7 @@ def dataplotter_scatter_x_y_plot(
         x_title='Untitled', y_title='Untitled', datapoints='Untitled',
         regtext='Untitled', fig_fontsize=[12, 10, 8], all_axis=False,
         spines=[False, True, False, True], a_txt=True, c_txt=True, trn=0.5,
-        trn2=0.5):
+        trn2=0.5, c_points=(15.0, 20.0)):
     """Takes a data frame object from pandas and returns scatter plot
     of two columns either with or without regression line.
 
@@ -1712,6 +1712,11 @@ def dataplotter_scatter_x_y_plot(
         The 'trn' parameter set the transparency of the points from 0.0 - 1.0.
         The 'trn' is set as default to '0.5'. The 'trn2' specifies significant
         dots.
+
+    c_points : tuple(optional)
+        The 'c_points' parameter determines the group size for labelling points
+        for the 'Colorcoded mode option. The default value pair in 'c_points'
+        is set to groups '>=' 15 and groups '<=' 20 to be labeled.
 
     Returns
     -------
@@ -2017,8 +2022,11 @@ def dataplotter_scatter_x_y_plot(
                             m_color[i])["Labels"].unique().astype(str)[0]))
 
         if c_txt:
-            print "Color coded Annotations for groups size of n <= 30!"
-            t_frame = pd.DataFrame(gr.size() <= 30, columns=['Trues'])
+            print ("Color coded Annotations for groups size of groups >= {0} "
+                   "and groups <= {1}!").format(c_points[0], c_points[1])
+            t_frame = pd.DataFrame(
+                ((gr.size()>=c_points[0]) & (gr.size() <= c_points[1])),
+                columns=['Trues'])
             t_db = t_frame.sort_values('Trues', ascending=False)
             n_db = np.nonzero(t_db.Trues)[0][-1] + 1
             t_db = t_db[:n_db]
