@@ -1485,7 +1485,8 @@ def dataplotter_barplot(
 
 
 def dataplotter_bar_plot_simple(
-    df, columns=[], index=[], figlabels=["Title", "X axis", "Y axis"],
+    df, color_list=[], columns=[], index=[], figlabels=["Title", "X axis",
+                                                        "Y axis"],
     datalabels=[],y_log=False, rot=90.0, border=0.80):
     """ Take a given pandas data frame and returns a simple bar plot.
 
@@ -1493,6 +1494,11 @@ def dataplotter_bar_plot_simple(
     ----------
     df : pandas.core.frame.DataFrame(object)
         The 'df' is a pandas data frame with the data.
+
+    color_list : list(optional)
+        The parameter called 'color_list' specifies the bar color for category.
+        The 'color_list' accepts string input and colors are specified by name
+        e.g. green color is passed as 'green' in the parameter.
 
     columns, index : list(optional)
         The parameters called 'columns' and 'index' are the column labels
@@ -1538,6 +1544,9 @@ def dataplotter_bar_plot_simple(
 
     dataplotter_fixing_textformat : For more information about text rendering
 
+    dataplotter_colorscheme : For more information about colors passed with
+                              'color_list' parameter.
+
     phen_o_links.dataset.dataset_copy_frame : For more information about
                                               data frame copy.
 
@@ -1549,6 +1558,9 @@ def dataplotter_bar_plot_simple(
     # Copying main data
     rot = float(rot)
     df1 = ds.dataset_copy_frame(df)
+
+    # Local global
+    palette=[None]
 
     # Fixes removes under score from column label(s).
     df1.columns = [i.replace("_", " ") for i in df1.columns.tolist()]
@@ -1581,12 +1593,20 @@ def dataplotter_bar_plot_simple(
         #slice_of = np.round(len(y_ticks)/50.0, decimals=0)
         y_ticks = np.linspace(0, (y_axis.Y_axis.max() + 25), 25)
 
+    # Creates a color palette upto 23 colors are feed
+    if color_list:
+        m, l, ld, dl, d = dataplotter_colorscheme(
+            main=color_list, hues=["light","lightdark","darklight","dark"])
+        palette = m + l + d + ld + dl
+        palette = [i for i in palette if i != None]
+        palette = palette[:len(columns)]
+
     # Creating figure
     fig1 = plt.figure(figsize=(8, 6))
     ax1 = fig1.add_subplot(1,1,1)
 
     # Plotting things
-    df1[columns].plot(kind="bar", ax=ax1)
+    df1[columns].plot(kind="bar", ax=ax1, color=palette)
 
     # Removing y and x tick
     dataplotter_x_y_tick_remover(ax1)
@@ -1625,7 +1645,7 @@ def dataplotter_bar_plot_simple(
         l = datalabels
 
     # Adding legend text and figure text to figure
-    ax1.legend(h,l, frameon=False, loc=(1.05,0.925))
+    ax1.legend(h,l, frameon=False, loc=(1.05,0.01))
     fig1.suptitle(r"%s" % (figure_text[0]))
     ax1.set_ylabel(r"%s" % (figure_text[2]))
     ax1.set_xlabel(r"%s" % (figure_text[1]))
