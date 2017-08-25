@@ -1485,9 +1485,9 @@ def dataplotter_barplot(
 
 
 def dataplotter_bar_plot_simple(
-    df, color_list=[], columns=[], index=[], figlabels=["Title", "X axis",
-                                                        "Y axis"],
-    datalabels=[],y_log=False, rot=90.0, border=0.80):
+    df, color_list=[], columns=[], index=[],legend_prop =(0.050, 0.9185, 2, False),
+    figlabels=["Title", "X axis", "Y axis"], datalabels=[],y_log=False,
+    rot=90.0, border=0.80):
     """ Take a given pandas data frame and returns a simple bar plot.
 
     Parameters
@@ -1505,6 +1505,14 @@ def dataplotter_bar_plot_simple(
         present in 'df'. The 'columns' is the individual bars plotted
         and the 'index' is the x-axis labels under each bar. If parameters
         are left empty, function call is triggered.
+
+    legend_prop : tuple(optional)
+        The parameter called 'legend_prop' is a tuple of length 4. The first
+        and second item in the parameter are the legend-coordinates for
+        the legend given as x and y. The third item, is the number of columns
+        in the legend and the last item determines if legend borders are
+        rendered. The accepted inputs for the parameter is 'float', 'float'
+        int and lastly bool.
 
     figlabels : list(optional)
         The 'figlabels' is list object with the length of 3, which renders the
@@ -1645,7 +1653,9 @@ def dataplotter_bar_plot_simple(
         l = datalabels
 
     # Adding legend text and figure text to figure
-    ax1.legend(h,l, frameon=False, loc=(1.05,0.01))
+    ax1.legend(
+        h, l, frameon=legend_prop[-1], loc=legend_prop[:2],
+        ncol=legend_prop[-2])
     fig1.suptitle(r"%s" % (figure_text[0]))
     ax1.set_ylabel(r"%s" % (figure_text[2]))
     ax1.set_xlabel(r"%s" % (figure_text[1]))
