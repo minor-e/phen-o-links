@@ -5247,7 +5247,7 @@ def dataset_go_enrichment(
     stats_go = []
     enrich_go =[]
 
-    if tails and not frames:
+    if not frames:
         tail =  dataset_copy_frame(tails)
         # Getting column names from tails
         names = [i for i in tail.columns if isinstance(i, tuple)]
