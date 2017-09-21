@@ -5165,7 +5165,8 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
 
 
 def dataset_go_enrichment(
-    tails, go_slims, alpha_error=0.1, flag="untitled", filepath="./"):
+    tails, go_slims, frames=() , alpha_error=0.1, flag="untitled",
+    filepath="./"):
     """Takes pandas data frame and tail for a given dataset and returns
     enrichments of go-tables. Data frame inputs must contain ORF as a valid
     column label. The function returns multiple csv-files.
@@ -5181,6 +5182,11 @@ def dataset_go_enrichment(
         that contains the relevant information to do a go enrichment analysis.
         For more information of how to format data frame 'See Also' section
         further down.
+    frames : tuple(dataset, subframe)
+        The parameter called 'frames' is tuple that the length of 2. The
+        parameter passes pandas.core.frame.DataFrame(object). The object passed
+        at the fist index is always greater in dimension than the 'subframe',
+        which is a partial subset from the first object called 'dataset'.
 
     alpha_error : float(optional)
         The 'alpha_error' is the tolerated type I error for calculated the
@@ -5214,7 +5220,9 @@ def dataset_go_enrichment(
     See Also
     --------
     dataset_go_enrichment_calc : For more information about how go-enrichment
-                                 is calculated.
+                                 is calculated and how 'frames' items are
+                                 passed.
+
     dataset_import_goterms : For more information of about 'go_slims' input
                              and how its formatted.
 
@@ -5223,13 +5231,12 @@ def dataset_go_enrichment(
                                           and 'right' return.
     Notes
     -----
-        The that fdr.py file most be present imported properly for function
+        The fdr.py file most be present imported properly for function
         to run.
 
     """
     # Local global
     go_terms = dataset_copy_frame(go_slims)
-    tail =  dataset_copy_frame(tails)
     names = []
     names_formatted = {}
     dsdb = "ds_vs_db_"
@@ -5240,49 +5247,99 @@ def dataset_go_enrichment(
     stats_go = []
     enrich_go =[]
 
-    # Getting column names from tails
-    names = [i for i in tail.columns if isinstance(i, tuple)]
-    names_formatted = {
-        i:"_"+str(int(i[0]))+"_"+str(int(i[1])) for i in names}
+    if tails and not frames:
+        tail =  dataset_copy_frame(tails)
+        # Getting column names from tails
+        names = [i for i in tail.columns if isinstance(i, tuple)]
+        names_formatted = {
+            i:"_"+str(int(i[0]))+"_"+str(int(i[1])) for i in names}
 
-    for label in names:
-        tmp_0 = tail.loc[tail[label] ==True]
-        subframes.append(tmp_0)
+        # Creating subframes
+        for label in names:
+            tmp_0 = tail.loc[tail[label] ==True]
+            subframes.append(tmp_0)
 
-    for i in range(len(names)):
-        go, go_enrich = dataset_go_enrichment_calc(
-            tail,subframes[i], go_terms)
-        # Adding interval column
-        go.loc[:,"Interval"] = str(names[i])
-        go_enrich[0].loc[:,"Interval"] = str(names[i])
-        go_enrich[1].loc[:,"Interval"] = str(names[i])
-        go_enrich[2].loc[:,"Interval"] = str(names[i])
-        stats_go.append(go)
-        enrich_go.append(go_enrich)
+        # Getting orf sliced by tail
+        for i in range(len(names)):
+            go, go_enrich = dataset_go_enrichment_calc(
+                tail,subframes[i], go_terms)
+            # Adding interval column
+            go.loc[:,"Interval"] = str(names[i])
+            go_enrich[0].loc[:,"Interval"] = str(names[i])
+            go_enrich[1].loc[:,"Interval"] = str(names[i])
+            go_enrich[2].loc[:,"Interval"] = str(names[i])
 
-    for i in range(len(enrich_go)):
-        for y in range(len(enrich_go[i])):
-            # Check that input not 0
-            if enrich_go[i][y].shape[0] == 0:
-                text = ("Skipped column labelled {0} since "
-                        "values for column labels "
-                        "is empty").format(names[i])
+            # Adding alpha error column
+            go.loc[:,"Alpha_Error"] = alpha_error
+            go_enrich[0].loc[:,"Alpha_Error"] = alpha_error
+            go_enrich[1].loc[:,"Alpha_Error"] = alpha_error
+            go_enrich[2].loc[:,"Alpha_Error"] = alpha_error
+            stats_go.append(go)
+            enrich_go.append(go_enrich)
+
+        #  P-values Checked for FDR alpha
+        for i in range(len(enrich_go)):
+            for y in range(len(enrich_go[i])):
+                # Check that input not 0
+                if enrich_go[i][y].shape[0] == 0:
+                    text = ("Skipped column labelled {0} since "
+                            "values for column labels "
+                            "is empty").format(names[i])
+                p_vector = fdr.FDR(
+                    enrich_go[i][y], field="P_value",alpha=alpha_error)
+                enrich_go[i][y] = enrich_go[i][y].apply(p_vector, axis=1)
+
+        # Creating files of cut-offs
+        for i in range(len(names)):
+            stat_name = gs + flag +"%s" %(names_formatted.get(names[i]))
+            var = dsdb + flag + "%s" %(names_formatted.get(names[i]))
+            var2 = subdb + flag + "%s" %(names_formatted.get(names[i]))
+            var3 = subds + flag + "%s" %(names_formatted.get(names[i]))
+            dataset_filesave(stats_go[i], filename=stat_name, pathdir=filepath)
+            dataset_filesave(
+                    enrich_go[i][0], filename=var, pathdir=filepath)
+            dataset_filesave(
+                enrich_go[i][1], filename=var2, pathdir=filepath)
+            dataset_filesave(
+                enrich_go[i][2], filename=var3, pathdir=filepath)
+
+    # Just checks a single subset via the frames parameter
+    if len(frames)==2:
+        # Slicing up frames
+        dataset, subframe = frames[0], frames[1]
+
+        # Calling go enrichment calculator
+        go, go_enrich = dataset_go_enrichment_calc(dataset, subframe, go_terms)
+
+        # Adding alpha error column
+        go.loc[:,"Alpha_Error"] = alpha_error
+        go_enrich[0].loc[:,"Alpha_Error"] = alpha_error
+        go_enrich[1].loc[:,"Alpha_Error"] = alpha_error
+        go_enrich[2].loc[:,"Alpha_Error"] = alpha_error
+
+        for i in range(len(go_enrich)):
             p_vector = fdr.FDR(
-                enrich_go[i][y], field="P_value",alpha=alpha_error)
-            enrich_go[i][y] = enrich_go[i][y].apply(p_vector, axis=1)
+                go_enrich[i], field="P_value", alpha=alpha_error)
+            go_enrich[i] = go_enrich[i].apply(p_vector, axis=1)
 
-    for i in range(len(names)):
-        stat_name = gs + flag +"%s" %(names_formatted.get(names[i]))
-        var = dsdb + flag + "%s" %(names_formatted.get(names[i]))
-        var2 = subdb + flag + "%s" %(names_formatted.get(names[i]))
-        var3 = subds + flag + "%s" %(names_formatted.get(names[i]))
-        dataset_filesave(stats_go[i], filename=stat_name, pathdir=filepath)
+            if go_enrich[i].shape[0] == 0:
+                text = ("Setting item to empty frame for index {0} since "
+                        "frame was empty").format(i)
+                go_enrich[i] = pd.DataFrame()
+        stat_name = gs + flag
+        var = dsdb + flag
+        var2 = subdb + flag
+        var3 = subds + flag
+        dataset_filesave(go, filename=stat_name, pathdir=filepath)
         dataset_filesave(
-                enrich_go[i][0], filename=var, pathdir=filepath)
+                go_enrich[0], filename=var, pathdir=filepath)
         dataset_filesave(
-            enrich_go[i][1], filename=var2, pathdir=filepath)
+            go_enrich[1], filename=var2, pathdir=filepath)
         dataset_filesave(
-            enrich_go[i][2], filename=var3, pathdir=filepath)
+            go_enrich[2], filename=var3, pathdir=filepath)
+
+
+
     return "Your files have been made"
 
 
