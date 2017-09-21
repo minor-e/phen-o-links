@@ -1485,8 +1485,9 @@ def dataplotter_barplot(
 
 
 def dataplotter_bar_plot_simple(
-    df, columns=[], index=[], figlabels=["Title", "X axis", "Y axis"],
-    datalabels=[],y_log=False, rot=90.0):
+    df, color_list=[], columns=[], index=[],legend_prop =(0.050, 0.9185, 2, False),
+    figlabels=["Title", "X axis", "Y axis"], datalabels=[],y_log=False,
+    rot=90.0, border=0.80):
     """ Take a given pandas data frame and returns a simple bar plot.
 
     Parameters
@@ -1494,11 +1495,24 @@ def dataplotter_bar_plot_simple(
     df : pandas.core.frame.DataFrame(object)
         The 'df' is a pandas data frame with the data.
 
+    color_list : list(optional)
+        The parameter called 'color_list' specifies the bar color for category.
+        The 'color_list' accepts string input and colors are specified by name
+        e.g. green color is passed as 'green' in the parameter.
+
     columns, index : list(optional)
         The parameters called 'columns' and 'index' are the column labels
         present in 'df'. The 'columns' is the individual bars plotted
         and the 'index' is the x-axis labels under each bar. If parameters
         are left empty, function call is triggered.
+
+    legend_prop : tuple(optional)
+        The parameter called 'legend_prop' is a tuple of length 4. The first
+        and second item in the parameter are the legend-coordinates for
+        the legend given as x and y. The third item, is the number of columns
+        in the legend and the last item determines if legend borders are
+        rendered. The accepted inputs for the parameter is 'float', 'float'
+        int and lastly bool.
 
     figlabels : list(optional)
         The 'figlabels' is list object with the length of 3, which renders the
@@ -1512,6 +1526,11 @@ def dataplotter_bar_plot_simple(
 
     rot : float(optional)
         The 'rot' rotates the x-axis major tick labels a certain degrees.
+
+    border : float(optional)
+        The 'border' defines the right side edge of the figure. Values accepted
+        in the 'border' parameter ranges from 0.0 to 1.0 and default value
+        is set to '0.8'
 
     Returns
     -------
@@ -1533,6 +1552,9 @@ def dataplotter_bar_plot_simple(
 
     dataplotter_fixing_textformat : For more information about text rendering
 
+    dataplotter_colorscheme : For more information about colors passed with
+                              'color_list' parameter.
+
     phen_o_links.dataset.dataset_copy_frame : For more information about
                                               data frame copy.
 
@@ -1545,6 +1567,9 @@ def dataplotter_bar_plot_simple(
     rot = float(rot)
     df1 = ds.dataset_copy_frame(df)
 
+    # Local global
+    palette=[None]
+
     # Fixes removes under score from column label(s).
     df1.columns = [i.replace("_", " ") for i in df1.columns.tolist()]
 
@@ -1556,20 +1581,47 @@ def dataplotter_bar_plot_simple(
     dataplotter_fixing_textformat()
     figure_text = dataplotter_textspacemanger(figlabels)
 
-    # Making y-ticks
-    max_tick = np.ceil(np.log10(df1.max().max()))
-    y_ticks = np.arange(0, max_tick*10**(max_tick-1)+1,100)[::2]
+    # Making y-ticks > 0 to work
+    max_tick = np.ceil(np.log10(df1[columns].max().max()))
+    y_limit = np.ceil(df1[columns].max().max()) + 10**(max_tick-1)
+    y_data = np.logspace(0, max_tick,base=10, num=10**5)
+    y_data = np.round(y_data/10**max_tick, decimals=1)*10**max_tick
+    y_data = np.unique(y_data)
+    y_axis = pd.DataFrame({"Y_axis":y_data})
+    y_axis.loc[:,"Tick"] = y_axis.Y_axis % 10**(max_tick-1)
+    y_axis = y_axis[y_axis.Tick==0]
+    y_axis.loc[:,"Scale"] = y_axis.Y_axis < y_limit
+    n_slice = len(y_axis[y_axis.Scale==True])
+    y_axis = y_axis.loc[:n_slice]
+    steps = (10**(max_tick-1)*2)/(2**(max_tick-1))
+    y_ticks = np.arange(0,(y_axis.Y_axis.max()+steps), steps)
+
+    # Reduces the number of y-ticks to 25
+    if len(y_ticks) > 50:
+        #slice_of = np.round(len(y_ticks)/50.0, decimals=0)
+        y_ticks = np.linspace(0, (y_axis.Y_axis.max() + 25), 25)
+
+    # Creates a color palette upto 23 colors are feed
+    if color_list:
+        m, l, ld, dl, d = dataplotter_colorscheme(
+            main=color_list, hues=["light","lightdark","darklight","dark"])
+        palette = m + l + d + ld + dl
+        palette = [i for i in palette if i != None]
+        palette = palette[:len(columns)]
 
     # Creating figure
     fig1 = plt.figure(figsize=(8, 6))
     ax1 = fig1.add_subplot(1,1,1)
 
     # Plotting things
-    df1[columns].plot(kind="bar", ax=ax1)
+    df1[columns].plot(kind="bar", ax=ax1, color=palette)
 
     # Removing y and x tick
     dataplotter_x_y_tick_remover(ax1)
 
+    # Removing spines
+    dataplotter_spines_remover(
+        ax1, left=True, bottom=True, right=False, top=False, all_axis=False)
 
     # Plotting bars
     ax1.xaxis.set_ticklabels(
@@ -1577,11 +1629,15 @@ def dataplotter_bar_plot_simple(
     ax1.set_yticks(list(y_ticks))
 
     if y_log:
+        # Creating y-log values for
         ax1.set_yscale("log")
         ax1.yaxis.set_tick_params(which="minor", left="off")
-        y_ticks = np.ceil(np.logspace(0,max_tick,len(y_ticks)))
-        y_ticks = set(y_ticks)
+        y_ticks = np.logspace(0, max_tick, base=10, num=len(y_ticks))
+
+        # Sets ticks and formats y-axis
         ax1.yaxis.set_ticks(list(y_ticks))
+        formatter = plt.LogFormatter()
+        ax1.yaxis.set_major_formatter(formatter)
 
     # Checking for "datalabels" option
     h, l = ax1.get_legend_handles_labels()
@@ -1596,12 +1652,16 @@ def dataplotter_bar_plot_simple(
             datalabels = l
         l = datalabels
 
-    # Adding text to figure
-    ax1.legend(h,l, frameon=False)
+    # Adding legend text and figure text to figure
+    ax1.legend(
+        h, l, frameon=legend_prop[-1], loc=legend_prop[:2],
+        ncol=legend_prop[-2])
+    fig1.suptitle(r"%s" % (figure_text[0]))
+    ax1.set_ylabel(r"%s" % (figure_text[2]))
+    ax1.set_xlabel(r"%s" % (figure_text[1]))
 
-    plt.title(r"%s" % (figure_text[0]))
-    plt.ylabel(r"%s" % (figure_text[2]))
-    plt.xlabel(r"%s" % (figure_text[1]))
+    # Adjusting right border
+    fig1.subplots_adjust(right=border)
 
     plt.show()
     print "Don't for get to save figure!"
@@ -1617,7 +1677,7 @@ def dataplotter_scatter_x_y_plot(
         x_title='Untitled', y_title='Untitled', datapoints='Untitled',
         regtext='Untitled', fig_fontsize=[12, 10, 8], all_axis=False,
         spines=[False, True, False, True], a_txt=True, c_txt=True, trn=0.5,
-        trn2=0.5):
+        trn2=0.5, c_points=(15.0, 20.0)):
     """Takes a data frame object from pandas and returns scatter plot
     of two columns either with or without regression line.
 
@@ -1712,6 +1772,11 @@ def dataplotter_scatter_x_y_plot(
         The 'trn' parameter set the transparency of the points from 0.0 - 1.0.
         The 'trn' is set as default to '0.5'. The 'trn2' specifies significant
         dots.
+
+    c_points : tuple(optional)
+        The 'c_points' parameter determines the group size for labelling points
+        for the 'Colorcoded mode option. The default value pair in 'c_points'
+        is set to groups '>=' 15 and groups '<=' 20 to be labeled.
 
     Returns
     -------
@@ -2017,8 +2082,11 @@ def dataplotter_scatter_x_y_plot(
                             m_color[i])["Labels"].unique().astype(str)[0]))
 
         if c_txt:
-            print "Color coded Annotations for groups size of n <= 30!"
-            t_frame = pd.DataFrame(gr.size() <= 30, columns=['Trues'])
+            print ("Color coded Annotations for groups size of groups >= {0} "
+                   "and groups <= {1}!").format(c_points[0], c_points[1])
+            t_frame = pd.DataFrame(
+                ((gr.size()>=c_points[0]) & (gr.size() <= c_points[1])),
+                columns=['Trues'])
             t_db = t_frame.sort_values('Trues', ascending=False)
             n_db = np.nonzero(t_db.Trues)[0][-1] + 1
             t_db = t_db[:n_db]
@@ -3412,7 +3480,8 @@ def dataplotter_go_colors(go_table):
 
 
 def dataplotter_go_enrichment_plot(
-    df, figtitle=["Untitled"], filename="untitled", path_to_save="./"):
+    df, sigma=False, figtitle=["Untitled"], filename="untitled",
+    path_to_save="./", grid="on"):
     """Takes the return files from phen_o_links.dataset_go_enrichment and
     returns a horizontal bar plot for GO slim terms that passed FDR.
     The bar plot is saved as an svg image.
@@ -3422,7 +3491,15 @@ def dataplotter_go_enrichment_plot(
 
     df : pandas.core.frame.DataFrame(object)
         The parameter called 'df' is a imported '.csv'-file created from
-        'phen_o_links'.dataset_go_enrichment return.
+        'phen_o_links.dataset_go_enrichment' return. Or other data file that
+        contains go enrichment values e.g.'phen_o_links.dataset_go_enrichment'
+        '_calc' returns.
+
+    sigma : boolean(optional)
+        The 'sigma' parameter handles data inputs that are formatted as the
+        return values in 'phen_o_links.dataset_go_enrichment' function. The
+        'sigma' parameter accepts only boolean inputs and the default value
+        is set to 'False'.
 
     figtitle : list(optional)
         The parameter called 'figtitle' is list object with a length of 1.
@@ -3436,7 +3513,14 @@ def dataplotter_go_enrichment_plot(
         The 'path_to_save' is the relative of absolute path from current
         working directory. The 'path_to_save' default value is './'.
 
+    grid : str(optional)
+        The "grid" parameter accepts string inputs 'on' and 'off' and
+        determines if figure is rendered with or without grid lines. Default
+        value for parameter is 'on'.
+
     Returns
+    -------
+
     fig1, ax1 : matplotlib.pyplot(objects)
         The 'fig1' return is the figure object of the plot and the 'ax1' is
         the axes object of the figure.
@@ -3451,7 +3535,9 @@ def dataplotter_go_enrichment_plot(
     dataplotter_go_colors : For more information about 'go_colors' empty.
     dataplotter_save_figure : For other saving option of 'fig1' and 'ax1'
                               returns.
-    phen_o_links.dataset_go_enrichment : For more information about 'df' input.
+    phen_o_links.dataset_go_enrichment : For more information about 'df' input
+                                         and the use of 'sigma' parameter.
+    phen_o_links.dataset_go_enrichment_calc : For information about 'df' input.
 
     """
     # Global variable
@@ -3467,10 +3553,25 @@ def dataplotter_go_enrichment_plot(
     go_terms = [i for i in df1.columns if "Slim" in i]
     df1 = df1.rename(columns={i:names_switch.get(i,i) for i in df1.columns})
     org_columns = df1.columns.tolist()
-    interval = df1.Interval.unique().astype(list)[0]
-    title_suffix = r"\newline for sigma$_{\emptyset}$ interval$_{%s}$." %(interval)
     figtitle2 = dataplotter_textspacemanger(figtitle)
     file_to_save = path_to_save + filename + ".svg"
+    title_suffix = r""
+
+    # Check that input contains values
+    if not (df1.loc[:,"FDR"].sum() >0):
+        text = ("Values in\n\n {0} \n\n data frame had "
+                "no enrichment").format(df1.head(3))
+        print Exception(text)
+        # Creating canvas and axes
+        fig1 = plt.figure(figsize=(8,6))
+        ax1 = fig1.add_subplot(111)
+        return fig1, ax1
+
+    # If sigma is passed
+    if sigma:
+        interval = df1.Interval.unique().astype(list)[0]
+        title_suffix = (r"\newline for sigma$_{\emptyset}$ "
+                        "interval$_{%s}$.") %(interval)
 
     # Making sure that user has colors input.
     if not go_colors:
@@ -3508,9 +3609,8 @@ def dataplotter_go_enrichment_plot(
     ax1 = fig1.add_subplot(111)
 
     # Plotting horizontal bar plots
-
     df1[df1.loc[:, "FDR"] == True].Enrichment.plot(
-        kind="barh", ax=ax1, color=bar_colors)
+        kind="barh", ax=ax1)
 
     # Removing spines
     dataplotter_spines_remover(
@@ -3522,12 +3622,14 @@ def dataplotter_go_enrichment_plot(
     nr_bars = [i for i in  range(len(ax1.yaxis.get_majorticklabels()))]
     bars_prp = prp_axis.get("children")
 
-    for i in bars_prp[:len(nr_bars)]:
+    for x,i in enumerate(bars_prp[:len(nr_bars)]):
         i.set_edgecolor("black")
+        i.set_facecolor(bar_colors[x])
     fig1.subplots_adjust(left=0.48)
 
     # Setting text
     ax1.set_xlabel(x_label)
+
     fig1.suptitle(r"%s" %(figtitle2[0]+title_suffix))
 
     # Saving figure
