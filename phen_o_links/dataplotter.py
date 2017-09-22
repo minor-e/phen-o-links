@@ -1487,7 +1487,7 @@ def dataplotter_barplot(
 def dataplotter_bar_plot_simple(
     df, color_list=[], columns=[], index=[],legend_prop =(0.050, 0.9185, 2, False),
     figlabels=["Title", "X axis", "Y axis"], datalabels=[],y_log=False,
-    rot=90.0, border=0.80):
+    rot=90.0, border=0.80, bar_width=1.0, edge_colors='black'):
     """ Take a given pandas data frame and returns a simple bar plot.
 
     Parameters
@@ -1531,6 +1531,14 @@ def dataplotter_bar_plot_simple(
         The 'border' defines the right side edge of the figure. Values accepted
         in the 'border' parameter ranges from 0.0 to 1.0 and default value
         is set to '0.8'
+
+    bar_width : float(optional)
+        The parameter called 'bar_width' determines the width of the bars
+        plotted. Default value is set to 1.0.
+
+    edge_colors : str(optional)
+        The 'edge_colors' parameter sets to edge colors for the bars in the
+        bar plot. The default value is set to 'black'.
 
     Returns
     -------
@@ -1614,7 +1622,8 @@ def dataplotter_bar_plot_simple(
     ax1 = fig1.add_subplot(1,1,1)
 
     # Plotting things
-    df1[columns].plot(kind="bar", ax=ax1, color=palette)
+    df1[columns].plot(kind="bar", ax=ax1, color=palette, width=bar_width,
+                      edgecolor=edge_colors)
 
     # Removing y and x tick
     dataplotter_x_y_tick_remover(ax1)
@@ -3550,8 +3559,8 @@ def dataplotter_go_enrichment_plot(
     x_label = r"%s" %("Enrichment log$_{2}$")
     labels = ["Dataset_vs_Database", "Sub_vs_Database", "Sub_vs_Dataset"]
     names_switch =  {i: "Enrichment" for i in labels}
-    go_terms = [i for i in df1.columns if "Slim" in i]
     df1 = df1.rename(columns={i:names_switch.get(i,i) for i in df1.columns})
+    go_terms = [i for i in df1.columns if "Slim" in i]
     org_columns = df1.columns.tolist()
     figtitle2 = dataplotter_textspacemanger(figtitle)
     file_to_save = path_to_save + filename + ".svg"
@@ -3566,6 +3575,11 @@ def dataplotter_go_enrichment_plot(
         fig1 = plt.figure(figsize=(8,6))
         ax1 = fig1.add_subplot(111)
         return fig1, ax1
+
+    # Creating filter that only GO Slims terms that are enriched 2 folded
+    #df1.loc[:,"Filtered"] = (df1.Enrichment >1.0)
+    #df1 = df1[df1["Filtered"]==True]
+    #go_terms = [i for i in df1.columns if "Slim" in i]
 
     # If sigma is passed
     if sigma:
@@ -3603,6 +3617,10 @@ def dataplotter_go_enrichment_plot(
     index_dict = {
         index_names[i]:r"%s" %(index2[i]) for i in range(len(index_names))}
     df1 = df1.rename(index=index_dict)
+
+    # Creating filter that only GO Slims terms that are enriched 2 folded
+    df1.loc[:,"Filtered"] = (df1.Enrichment >1.0)
+    df1 = df1[df1["Filtered"]==True]
 
     # Creating canvas and axes
     fig1 = plt.figure(figsize=(8,6))

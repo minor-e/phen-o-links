@@ -20,6 +20,8 @@ from scipy.stats import hypergeom
 from os import listdir
 from os.path import abspath
 from os.path import exists
+from os import mkdir
+from os import rename
 from rpy2.robjects.packages import importr
 from rpy2.robjects.vectors import FloatVector
 
@@ -5115,19 +5117,26 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
     for i in range(len(n_cols)):
         for orf in dataframes[i].ORF.unique():
             go.loc[go.ORF==orf,n_cols[i]] +=1
+
+    # Number ORFs per category
     go_stats = go.groupby(gr_index).sum()
     orf_db = go.groupby(gr_index).size()
     go_stats.loc[:,"Database"] = orf_db
 
-    # Calculating Enrichment
-    go_stats.loc[:,"Dataset_vs_Database"] = np.log2(
-        go_stats.Dataset/ds_n) - np.log2(go_stats.Database/db_n)
+    # Calculating Enrichment Log2 values
+    a, b = np.log2(go_stats.Dataset.astype(float)/ds_n), np.log2(
+        go_stats.Database.astype(float)/db_n)
 
-    go_stats.loc[:,"Sub_vs_Database"] = np.log2(
-        go_stats.Sub/sub_n) - np.log2(go_stats.Database/db_n)
+    a2, b2 = np.log2(go_stats.Sub.astype(float)/sub_n), np.log2(
+        go_stats.Database.astype(float)/db_n)
 
-    go_stats.loc[:,"Sub_vs_Dataset"] = np.log2(
-        go_stats.Sub/sub_n) - np.log2(go_stats.Dataset/ds_n)
+    a3, b3 = np.log2(go_stats.Sub.astype(float)/sub_n), np.log2(
+        go_stats.Dataset.astype(float)/ds_n)
+
+    # Getting Log2 difference.
+    go_stats.loc[:,"Dataset_vs_Database"] = a-b
+    go_stats.loc[:,"Sub_vs_Database"] = a2-b2
+    go_stats.loc[:,"Sub_vs_Dataset"] = a3-b3
 
     for i in go_stats.columns[-3:]:
         tmp2 = go_stats.loc[go_stats[i]>0]
@@ -5145,7 +5154,7 @@ def dataset_go_enrichment_calc(df, subframe, go_table ):
     sub_vs_ds.loc[:,"P_value"] = sub_vs_ds.apply(
         lambda val: hypergeom.pmf(val.Sub, db_n, val.Dataset, sub_n), axis=1)
 
-    # Deleting unwanted columns
+    ## Deleting unwanted columns
     ds_vs_db = ds_vs_db.drop(ds_vs_db.columns[-3:-1],axis=1)
     sub_vs_db = sub_vs_db.drop(sub_vs_db.columns[[-4,-2,]], axis=1)
     sub_vs_ds = sub_vs_ds.drop(sub_vs_ds.columns[[-4,-3,]], axis=1)
@@ -5341,6 +5350,134 @@ def dataset_go_enrichment(
 
 
     return "Your files have been made"
+
+
+def dataset_get_significant_go_hits(
+    path_to_files="./", destination_of_files="./",
+    directory_name="fdr_cleared_go_hits"):
+    """ The function search for csv-files that contains 'ds_vs_db_',
+    'sub_vs_db_' and 'sub_vs_ds_' in the file name. The filters files
+    with for FDR sum values that are greater than zero and moves files that
+    meet the criteria to a directory. Function works only on local disk files.
+
+    Parameters
+    ----------
+    path_to_files : str(optional)
+        The parameter called 'path_to_files' is the relative path from
+        working directory.
+
+    destination_of_files : str(optional)
+        The parameter called 'destination_of_files' is the relative path
+        from working directory. The parameter is used for moving files that
+        passed the FDR test.
+
+    directory_name : str(optional)
+        The parameter called 'directory_name' specify the directory of where
+        to move files. If the directory to move files is non-existent the
+        function creates a directory with the 'directory_name' passed.
+
+    Returns
+    -------
+        Move files that passed FDR criteria to a directory.
+
+    Raises
+    ------
+    OSError
+        If 'destination_of_files' path is non-existent.
+
+    See Also
+    --------
+    dataset_go_enrichment : For more information about 'FDR' test.
+
+    os : For more information about 'rename', 'mkdir', 'exists' and 'abspath'
+    """
+    # Global Local
+    dsdb = "ds_vs_db_"
+    subdb = "sub_vs_db_"
+    subds = "sub_vs_ds_"
+    discarded_files = []
+
+    # Checking path_to_files
+    if path_to_files:
+        try:
+            if path_to_files[-1] != "/":
+                raise ValueError
+
+        except ValueError:
+            path_to_files = path_to_files + "/"
+
+    if directory_name:
+        try:
+            if destination_of_files[-1] != "/":
+                raise ValueError
+        except ValueError:
+            destination_of_files = destination_of_files + "/"
+
+    # Creating Directory name, as well as directory
+    destination_of_files = destination_of_files+ directory_name
+
+    # Checking that directory_name exist
+    if exists(destination_of_files):
+
+        # Making directory
+        try:
+            mkdir(destination_of_files)
+
+        except OSError:
+            text = ("Destination for file already exist! Skipping creating"
+                    " {0} directory").format(destination_of_files)
+            print text
+    else:
+        mkdir(destination_of_files)
+
+
+
+    # Creating path to directory
+    destination_of_files = destination_of_files + "/"
+
+    try:
+        if not exists(destination_of_files):
+            raise OSError
+    except OSError:
+        text = ("Path to directory not viable please "
+                "check inputs:\n{0}").format(destination_of_files)
+        print text
+        return
+
+    # List all files and directories locally in disk
+    files_in_directory = listdir(path_to_files)
+
+    # Files that contain global keys
+    ds_vs_db_files = [i for i in files_in_directory if dsdb in i]
+    sub_vs_db_files = [i for i in files_in_directory if subdb in i]
+    sub_vs_ds_files = [i for i in files_in_directory if subds in i]
+
+    # Files of interest
+    all_files = (ds_vs_db_files + sub_vs_db_files + sub_vs_ds_files)
+
+    # Checking that FDR
+    for i in all_files:
+        df = pd.read_csv(path_to_files+i, delimiter="\t")
+        try:
+            if df.FDR.sum() < 1:
+                raise(ValueError)
+
+        except ValueError:
+            discarded_files.append(i)
+
+    print ("The file(s) that are discarded:\n {0} \n").format(discarded_files)
+
+    # Removing discarded files from all_files
+    [all_files.pop(all_files.index(i)) for i in discarded_files]
+
+    # Moving files to directory
+    for i in all_files:
+        rename(path_to_files+i, destination_of_files+i)
+
+    return "GO hits that passed are located at {0}".format(
+        abspath(destination_of_files))
+
+
 
 
 if __name__ == "__main__":
